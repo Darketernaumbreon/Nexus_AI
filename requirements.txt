@@ -28,3 +28,6 @@ xarray>=2023.0.0
 rioxarray>=0.14.0
 netCDF4>=1.6.0
 arq>=0.25.0
+
+# Stability & Observability
+structlog>=23.1.0

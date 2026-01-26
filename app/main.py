@@ -22,14 +22,6 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-@app.get("/health", tags=["health"])
-def health_check():
-    """
-    Health check endpoint to ensure API is running.
-    """
-    logger.info("Health check requested")
-    return {"status": "ok", "version": "0.1.0"}
-
 if __name__ == "__main__":
     # For debugging purposes only
     import uvicorn
