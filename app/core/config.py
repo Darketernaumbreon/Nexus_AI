@@ -19,8 +19,14 @@ class Settings(BaseSettings):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
 
     # AUTHENTICATION
-    SECRET_KEY: str = "YOUR_SECRET_KEY_HERE_PLEASE_CHANGE_IT"  # TODO: Change in production
-    ALGORITHM: str = "HS256"
+    # RS256 keys - In production, use file paths or secrets manager
+    # For now, we load from the generated pem files
+    with open("private.pem", "r") as f:
+        PRIVATE_KEY: str = f.read()
+    with open("public.pem", "r") as f:
+        PUBLIC_KEY: str = f.read()
+        
+    ALGORITHM: str = "RS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
