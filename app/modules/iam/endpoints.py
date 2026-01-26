@@ -5,21 +5,22 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.api import deps
-from app.core import security
+from app.common.dependencies import get_db
+from app.modules.iam import security
 from app.core.config import settings
-from app.models.user import User
+from app.modules.iam.models import User
 
 router = APIRouter()
 
 @router.post("/login/access-token")
 async def login_access_token(
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests
     """
+    # TODO: Migrate this logic to a service layer for strict separation
     result = await db.execute(select(User).filter(User.email == form_data.username))
     user = result.scalars().first()
     
