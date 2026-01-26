@@ -19,3 +19,12 @@ python-multipart>=0.0.6
 # Security & Rate Limiting
 slowapi>=0.1.0
 argon2-cffi>=21.0.0
+
+# External Integrations & Resilience
+google-maps-routing>=0.1.0
+pybreaker>=1.0.0
+imdlib>=0.1.0
+xarray>=2023.0.0
+rioxarray>=0.14.0
+netCDF4>=1.6.0
+arq>=0.25.0
