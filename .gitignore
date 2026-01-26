@@ -154,3 +154,13 @@ cython_debug/
 # Editors
 .vscode/
 .idea/
+
+# Reports
+*_REPORT.md
+
+# Secrets
+*.pem
+generate_keys.py
+
+# Dev Scripts
+verify_all_phases.py

@@ -1,23 +1,29 @@
-
 import logging
 import sys
+import structlog
 from typing import Any
 
-def get_logger(name: str) -> logging.Logger:
+def configure_logger():
     """
-    Returns a configured logger instance.
+    Configure structlog for JSON output and standard logging bridge.
     """
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-    
-    # Avoid adding multiple handlers if they already exist
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        
-    return logger
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+def get_logger(name: str) -> Any:
+    """
+    Returns a structlog logger.
+    """
+    return structlog.get_logger(name)
+
+# Initialize configuration on import
+configure_logger()
+print("Structlog configured.")
