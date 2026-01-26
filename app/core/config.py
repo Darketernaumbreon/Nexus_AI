@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     ALGORITHM: str = "RS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # REDIS
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
+    @property
+    def REDIS_SETTINGS(self):
+        from arq.connections import RedisSettings
+        return RedisSettings(host=self.REDIS_HOST, port=self.REDIS_PORT)
+
     class Config:
         env_file = ".env"
 

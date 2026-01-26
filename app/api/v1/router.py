@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import predictions
-from app.modules.iam import endpoints as login_endpoints
+from app.modules.iam.endpoints import router as iam_router
+from app.modules.operational.endpoints import router as operational_router
 
 api_router = APIRouter()
-
-api_router.include_router(login_endpoints.router, tags=["login"])
+api_router.include_router(iam_router, prefix="/iam", tags=["iam"])
+api_router.include_router(operational_router, prefix="/operational", tags=["operational"])
 api_router.include_router(predictions.router, prefix="/predict", tags=["predictions"])
