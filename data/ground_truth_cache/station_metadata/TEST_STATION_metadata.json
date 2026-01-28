@@ -1,0 +1,9 @@
+{
+  "station_id": "TEST_STATION",
+  "river": "Brahmaputra",
+  "location": "Guwahati",
+  "warning_level": 49.0,
+  "danger_level": 50.0,
+  "latitude": 26.1445,
+  "longitude": 91.7362
+}
