@@ -7,13 +7,15 @@ from app.core.config import settings
 from app.api.v1.router import api_router
 from app.core.logging import get_logger
 from app.core.limiter import limiter
+from app.core.lifespan import lifespan
 
 logger = get_logger("main")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    description="NEXUS-AI Backend API - Disaster Risk Prediction & Routing"
+    description="NEXUS-AI Backend API - Disaster Risk Prediction & Routing",
+    lifespan=lifespan  # Model loading at startup
 )
 
 app.state.limiter = limiter
