@@ -160,10 +160,10 @@ export function LoginForm() {
           </Button>
 
           <p className="text-center text-xs text-muted-foreground mt-4">
-            Demo credentials: admin / password
+            Demo credentials: admin@nexus.ai / NexusSecureStart2026!
           </p>
         </form>
       </CardContent>
-    </Card>
+    </Card >
   );
 }

@@ -9,7 +9,7 @@ import {
 } from "@/features/weather/components/weather-chart";
 import { AlertBanner } from "@/features/weather/components/alert-banner";
 import { GridVisualization } from "@/features/weather/components/grid-visualization";
-import { useWeatherGrid } from "@/features/weather/hooks/use-weather";
+import { useWeatherGrid, useIMDRainfall } from "@/features/weather/hooks/use-weather";
 import { ErrorBanner } from "@/components/feedback/error-banner";
 import { CardSkeleton } from "@/components/feedback/skeleton-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { RefreshCw, Thermometer, Droplets, Wind } from "lucide-react";
 
 export default function WeatherPage() {
   const { data, isLoading, error, refetch } = useWeatherGrid();
+  const { data: imdData, isLoading: imdLoading, refetch: refetchIMD } = useIMDRainfall();
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
 
   const activeAlerts =
@@ -28,16 +29,30 @@ export default function WeatherPage() {
     setDismissedAlerts((prev) => [...prev, alertId]);
   };
 
+  const handleRefresh = () => {
+    refetch();
+    refetchIMD();
+  };
+
   // Calculate averages
-  const avgRainfall = data?.cells.length
-    ? data.cells.reduce((sum, c) => sum + c.rainfall_mm, 0) / data.cells.length
-    : 0;
+  let avgRainfall = 0;
+  let rainfallSource = "Forecast";
+
+  if (imdData?.data?.length > 0) {
+    const sum = imdData.data.reduce((acc: number, curr: any) => acc + curr.rainfall_mm, 0);
+    avgRainfall = sum / imdData.data.length;
+    rainfallSource = "IMD (Observed)";
+  } else if (data?.cells.length) {
+    // Fallback
+    avgRainfall = data.cells.reduce((sum, c) => sum + c.rainfall_mm, 0) / data.cells.length;
+  }
+
   const avgTemp = data?.cells.length
     ? data.cells.reduce((sum, c) => sum + c.temperature_c, 0) / data.cells.length
     : 0;
   const avgHumidity = data?.cells.length
     ? data.cells.reduce((sum, c) => sum + c.humidity_percent, 0) /
-      data.cells.length
+    data.cells.length
     : 0;
 
   return (
@@ -63,12 +78,12 @@ export default function WeatherPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={refetch}
-              disabled={isLoading}
+              onClick={handleRefresh}
+              disabled={isLoading || imdLoading}
               className="rounded-xl bg-transparent"
             >
               <RefreshCw
-                className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
+                className={cn("h-4 w-4 mr-2", (isLoading || imdLoading) && "animate-spin")}
               />
               Refresh
             </Button>
@@ -79,8 +94,8 @@ export default function WeatherPage() {
         {error && (
           <ErrorBanner
             message={error.message}
-            onRetry={refetch}
-            onDismiss={() => {}}
+            onRetry={handleRefresh}
+            onDismiss={() => { }}
           />
         )}
 
@@ -94,9 +109,12 @@ export default function WeatherPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Avg. Rainfall</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {isLoading ? "--" : `${avgRainfall.toFixed(1)} mm`}
-                  </p>
+                  <div className="flex flex-col">
+                    <p className="text-2xl font-bold text-foreground">
+                      {isLoading && imdLoading ? "--" : `${avgRainfall.toFixed(1)} mm`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{rainfallSource}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

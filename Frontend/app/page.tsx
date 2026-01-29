@@ -26,12 +26,13 @@ import {
   Clock,
 } from "lucide-react";
 import { useRoadNetwork } from "@/features/network/hooks/use-road-network";
-import { useWeatherGrid, useWeatherAlerts } from "@/features/weather/hooks/use-weather";
+import { useWeatherGrid, useWeatherAlerts, useIMDRainfall } from "@/features/weather/hooks/use-weather";
 import { CardSkeleton } from "@/components/feedback/skeleton-loader";
 
 export default function DashboardPage() {
   const { data: networkData, isLoading: networkLoading } = useRoadNetwork();
   const { data: weatherData, isLoading: weatherLoading } = useWeatherGrid();
+  const { data: imdData, isLoading: imdLoading } = useIMDRainfall();
   const { alerts, hasActiveAlerts } = useWeatherAlerts();
 
   // Calculate statistics
@@ -40,19 +41,28 @@ export default function DashboardPage() {
     networkData?.routes.filter((r) => r.average_risk_score > 70).length || 0;
   const avgRiskScore = networkData?.routes.length
     ? Math.round(
-        networkData.routes.reduce((sum, r) => sum + r.average_risk_score, 0) /
-          networkData.routes.length
-      )
+      networkData.routes.reduce((sum, r) => sum + r.average_risk_score, 0) /
+      networkData.routes.length
+    )
     : 0;
 
-  const avgRainfall = weatherData?.cells.length
-    ? weatherData.cells.reduce((sum, c) => sum + c.rainfall_mm, 0) /
-      weatherData.cells.length
-    : 0;
+  // Prefer IMD data for rainfall if available
+  // imdData.data is array of points with rainfall_mm
+  let avgRainfall = 0;
+  let rainfallSource = "Forecast";
+
+  if (imdData?.data?.length > 0) {
+    const sum = imdData.data.reduce((acc: number, curr: any) => acc + curr.rainfall_mm, 0);
+    avgRainfall = sum / imdData.data.length;
+    rainfallSource = "IMD (Observed)";
+  } else if (weatherData?.cells.length) {
+    avgRainfall = weatherData.cells.reduce((sum, c) => sum + c.rainfall_mm, 0) /
+      weatherData.cells.length;
+  }
 
   const avgTemp = weatherData?.cells.length
     ? weatherData.cells.reduce((sum, c) => sum + c.temperature_c, 0) /
-      weatherData.cells.length
+    weatherData.cells.length
     : 0;
 
   return (
@@ -165,9 +175,12 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Avg. Rainfall</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {weatherLoading ? "--" : `${avgRainfall.toFixed(1)} mm`}
-                  </p>
+                  <div className="flex flex-col">
+                    <p className="text-2xl font-bold text-foreground">
+                      {weatherLoading && imdLoading ? "--" : `${avgRainfall.toFixed(1)} mm`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{rainfallSource}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -231,8 +244,8 @@ export default function DashboardPage() {
                             route.average_risk_score > 70
                               ? "destructive"
                               : route.average_risk_score > 40
-                              ? "secondary"
-                              : "default"
+                                ? "secondary"
+                                : "default"
                           }
                           className="rounded-lg w-14 justify-center"
                         >
@@ -342,25 +355,23 @@ export default function DashboardPage() {
                   <div
                     className="h-4 rounded-full bg-risk-medium"
                     style={{
-                      width: `${
-                        (networkData?.routes.filter(
-                          (r) =>
-                            r.average_risk_score > 40 &&
-                            r.average_risk_score <= 70
-                        ).length || 0) *
+                      width: `${(networkData?.routes.filter(
+                        (r) =>
+                          r.average_risk_score > 40 &&
+                          r.average_risk_score <= 70
+                      ).length || 0) *
                         30
-                      }%`,
+                        }%`,
                     }}
                   />
                   <div
                     className="h-4 rounded-full bg-risk-high"
                     style={{
-                      width: `${
-                        (networkData?.routes.filter(
-                          (r) => r.average_risk_score > 70
-                        ).length || 0) *
+                      width: `${(networkData?.routes.filter(
+                        (r) => r.average_risk_score > 70
+                      ).length || 0) *
                         30
-                      }%`,
+                        }%`,
                     }}
                   />
                 </div>

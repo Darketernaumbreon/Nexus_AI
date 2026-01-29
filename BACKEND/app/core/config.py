@@ -56,7 +56,10 @@ class Settings(BaseSettings):
         return RedisSettings(host=self.REDIS_HOST, port=self.REDIS_PORT, password=self.REDIS_PASSWORD)
 
     # OPENTOPOGRAPHY & DEM ACQUISITION
-    OPENTOPOGRAPHY_API_KEY: str
+    OPENTOPOGRAPHY_API_KEY: str = ""
+    
+    # GOOGLE MAPS PLATFORM
+    GOOGLE_MAPS_API_KEY: str = "" # User must provide this in .env
     DEM_CACHE_DIR: str = "data/dem_cache"
     DEM_BBOX_BUFFER: float = 0.01  # degrees
     DEM_DEFAULT_DATASET: str = "COP30"  # COP30 or SRTMGL1

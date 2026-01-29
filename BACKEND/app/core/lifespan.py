@@ -172,8 +172,41 @@ async def lifespan(app: FastAPI):
         total_models=len(app.state.ml_models)
     )
     
+    # START BACKGROUND WORKER (Simulation Engine)
+    # In a real microservices arch, this would be a separate container.
+    # For this hybrid MVP, we run it in the same event loop.
+    import asyncio
+    from arq import Worker
+    from app.worker import WorkerSettings
+    
+    async def run_worker():
+        logger.info("background_worker_starting")
+        try:
+             # Create and run worker
+             worker = Worker(
+                 functions=WorkerSettings.functions, 
+                 redis_settings=WorkerSettings.redis_settings,
+                 on_startup=WorkerSettings.on_startup,
+                 on_shutdown=WorkerSettings.on_shutdown
+             )
+             await worker.run()
+        except Exception as e:
+            logger.error("background_worker_failed", error=str(e))
+
+    # app.state.worker_task = asyncio.create_task(run_worker())
+    
     yield  # App runs here
     
     # Shutdown
     logger.info("shutdown_cleanup")
+    
+    # Cancel worker
+    if hasattr(app.state, "worker_task"):
+        logger.info("stopping_background_worker")
+        app.state.worker_task.cancel()
+        try:
+            await app.state.worker_task
+        except asyncio.CancelledError:
+            pass
+            
     app.state.ml_models = None

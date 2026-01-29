@@ -24,6 +24,7 @@ class NavEdge(Base):
     geom = Column(Geometry("LINESTRING", srid=4326, spatial_index=True), nullable=False)
     
     # Navigation attributes
+    name = Column(String, nullable=True, comment="Road name (e.g., NH-27)")
     base_cost = Column(Float, nullable=False, comment="Base traversal cost (e.g., length/speed)")
     capacity = Column(Float, nullable=True, comment="Vehicle capacity per hour")
     surface_type = Column(String, nullable=True, comment="e.g., asphalt, dirt, gravel")

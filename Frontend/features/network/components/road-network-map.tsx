@@ -34,26 +34,59 @@ export function RoadNetworkMap({
   onRouteSelect,
   showWeatherLayer = false,
 }: RoadNetworkMapProps) {
-  const [zoom, setZoom] = useState(6);
-  const [center] = useState({ lat: 20.5937, lng: 78.9629 }); // India center
+  const [zoom, setZoom] = useState(1);
+
+  // Calculate dynamic bounds
+  const allCoords = routes.flatMap(r => r.coordinates || []);
+  const hasData = allCoords.length > 0;
+
+  const lons = hasData ? allCoords.map(c => c[0]) : [91.7, 91.8]; // Default split if empty
+  const lats = hasData ? allCoords.map(c => c[1]) : [26.1, 26.2];
+
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+
+  // Padding
+  const lonSpan = maxLon - minLon || 0.1;
+  const latSpan = maxLat - minLat || 0.1;
+  const padX = lonSpan * 0.1;
+  const padY = latSpan * 0.1;
+
+  const project = (lon: number, lat: number) => {
+    // Map to 400x300 SVG space with padding
+    const x = ((lon - (minLon - padX)) / (lonSpan + 2 * padX)) * 400;
+    const y = 300 - ((lat - (minLat - padY)) / (latSpan + 2 * padY)) * 300;
+    return `${x} ${y}`;
+  };
+
+  // DEBUG: Visual confirmation of data
+  // Remove this after verifying
+  const debugInfo = {
+    routeCount: routes.length,
+    hasData,
+    bounds: { minLon, maxLon, minLat, maxLat },
+    sampleRoute: routes[0] ? { name: routes[0].name, coords: routes[0].coordinates?.length } : "None"
+  };
 
   const handleZoomIn = useCallback(() => {
-    setZoom((prev) => Math.min(prev + 1, 15));
+    setZoom((prev) => Math.min(prev + 0.5, 5));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setZoom((prev) => Math.max(prev - 1, 3));
+    setZoom((prev) => Math.max(prev - 0.5, 1));
   }, []);
 
   const handleReset = useCallback(() => {
-    setZoom(6);
+    setZoom(1);
   }, []);
 
   return (
     <Card className="relative h-full rounded-2xl shadow-soft overflow-hidden border-border">
       {/* Map Container - Visual Representation */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200">
-        {/* Grid overlay for map effect */}
+        {/* Grid overlay */}
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -61,98 +94,66 @@ export function RoadNetworkMap({
               linear-gradient(to right, var(--border) 1px, transparent 1px),
               linear-gradient(to bottom, var(--border) 1px, transparent 1px)
             `,
-            backgroundSize: `${30 * (zoom / 6)}px ${30 * (zoom / 6)}px`,
+            backgroundSize: "40px 40px",
           }}
         />
 
-        {/* Simulated route lines */}
         <svg
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full transition-transform duration-300"
+          style={{ transform: `scale(${zoom})` }}
           viewBox="0 0 400 300"
           preserveAspectRatio="xMidYMid meet"
         >
-          {/* Route paths - simplified visual representation */}
-          {routes.map((route, index) => {
+          {/* Render Routes */}
+          {routes.map((route) => {
             const isSelected = route.id === selectedRouteId;
-            const pathData = [
-              "M 50 150 Q 100 100, 150 120 T 250 100 T 350 150",
-              "M 80 250 Q 120 200, 180 220 T 280 180 T 350 200",
-              "M 100 80 Q 150 60, 200 100 T 300 80 T 380 120",
-            ][index % 3];
+            const coords = route.coordinates || [];
+
+            if (coords.length < 2) return null;
+
+            // Create SVG Path "M x y L x y ..."
+            const d = coords.map((pt, i) =>
+              `${i === 0 ? "M" : "L"} ${project(pt[0], pt[1])}`
+            ).join(" ");
 
             return (
               <g key={route.id}>
                 <path
-                  d={pathData}
+                  d={d}
                   fill="none"
                   stroke={getRiskColor(route.average_risk_score)}
-                  strokeWidth={isSelected ? 6 : 4}
+                  strokeWidth={isSelected ? 4 : 2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   className={cn(
-                    "cursor-pointer transition-all",
-                    isSelected && "filter drop-shadow-lg"
+                    "cursor-pointer transition-all hover:stroke-[4px]",
+                    isSelected && "filter drop-shadow-md"
                   )}
                   onClick={() => onRouteSelect?.(route.id)}
-                  opacity={isSelected ? 1 : 0.7}
+                  opacity={isSelected ? 1 : 0.8}
                 />
-                {/* Route segments with different risk colors */}
-                {route.segments.map((segment, segIndex) => {
-                  const segmentPathData = [
-                    "M 50 150 Q 75 125, 100 135",
-                    "M 100 135 Q 125 145, 150 120",
-                    "M 150 120 Q 200 100, 250 100",
-                  ][segIndex % 3];
 
-                  return (
-                    <path
-                      key={segment.id}
-                      d={segmentPathData}
-                      fill="none"
-                      stroke={getRiskColor(segment.risk_score)}
-                      strokeWidth={isSelected ? 5 : 3}
-                      strokeLinecap="round"
-                      opacity={0}
-                    />
-                  );
-                })}
+                {/* Node Markers (Start/End) */}
+                <circle cx={project(coords[0][0], coords[0][1]).split(' ')[0]}
+                  cy={project(coords[0][0], coords[0][1]).split(' ')[1]}
+                  r={isSelected ? 3 : 1.5} fill="var(--primary)" />
+                <circle cx={project(coords[coords.length - 1][0], coords[coords.length - 1][1]).split(' ')[0]}
+                  cy={project(coords[coords.length - 1][0], coords[coords.length - 1][1]).split(' ')[1]}
+                  r={isSelected ? 3 : 1.5} fill="var(--primary)" />
               </g>
             );
           })}
 
-          {/* City markers */}
-          {[
-            { x: 50, y: 150, name: "Delhi" },
-            { x: 350, y: 150, name: "Jaipur" },
-            { x: 80, y: 250, name: "Mumbai" },
-            { x: 350, y: 200, name: "Pune" },
-            { x: 100, y: 80, name: "Chennai" },
-            { x: 380, y: 120, name: "Bangalore" },
-          ].map((city) => (
-            <g key={city.name}>
-              <circle
-                cx={city.x}
-                cy={city.y}
-                r="6"
-                fill="var(--primary)"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <text
-                x={city.x}
-                y={city.y - 12}
-                textAnchor="middle"
-                className="text-[10px] font-medium fill-foreground"
-              >
-                {city.name}
-              </text>
-            </g>
-          ))}
+          {!hasData && (
+            <text x="200" y="150" textAnchor="middle" className="text-sm fill-muted-foreground">
+              No geospatial data available
+            </text>
+          )}
         </svg>
 
         {/* Weather overlay hint */}
         {showWeatherLayer && (
-          <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5">
+          <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-1.5 z-10">
             <span className="text-xs text-muted-foreground">
               Weather layer active
             </span>
@@ -161,7 +162,7 @@ export function RoadNetworkMap({
       </div>
 
       {/* Map Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <Button
           variant="secondary"
           size="icon"
@@ -188,28 +189,35 @@ export function RoadNetworkMap({
         </Button>
       </div>
 
+      {/* DEBUG OVERLAY */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white p-2 rounded text-[10px] font-mono z-50 pointer-events-none max-w-xs overflow-hidden">
+        <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+      </div>
+
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-xl p-3 shadow-soft">
+      <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-xl p-3 shadow-soft z-10">
         <p className="text-xs font-medium text-foreground mb-2">Risk Level</p>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <div className="h-2 w-6 rounded-full bg-risk-low" />
-            <span className="text-xs text-muted-foreground">Low (0-40)</span>
+            <span className="text-xs text-muted-foreground">Low</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-2 w-6 rounded-full bg-risk-medium" />
-            <span className="text-xs text-muted-foreground">Medium (40-70)</span>
+            <span className="text-xs text-muted-foreground">Medium</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-2 w-6 rounded-full bg-risk-high" />
-            <span className="text-xs text-muted-foreground">High (70+)</span>
+            <span className="text-xs text-muted-foreground">High</span>
           </div>
         </div>
       </div>
 
-      {/* Zoom level indicator */}
-      <div className="absolute bottom-4 right-4 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-soft">
-        <span className="text-xs text-muted-foreground">Zoom: {zoom}x</span>
+      {/* Region Indicator - Dynamic */}
+      <div className="absolute bottom-4 right-4 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-soft z-10">
+        <span className="text-xs font-medium">
+          {hasData ? "Region: North East (Live)" : "No Data"}
+        </span>
       </div>
     </Card>
   );

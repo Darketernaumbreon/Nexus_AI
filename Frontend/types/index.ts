@@ -61,6 +61,7 @@ export interface RoutePolyline {
   segments: RouteSegment[];
   total_length_km: number;
   average_risk_score: number;
+  coordinates?: number[][]; // [lon, lat] arrays
   source: "osrm" | "internal_postgis";
 }
 

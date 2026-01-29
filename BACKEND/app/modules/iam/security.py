@@ -4,7 +4,14 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+# Tuned for interactive login speed (< 100ms) while maintaining reasonable security
+pwd_context = CryptContext(
+    schemes=["argon2"], 
+    deprecated="auto",
+    argon2__rounds=1, 
+    argon2__memory_cost=65536,
+    argon2__parallelism=4
+)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

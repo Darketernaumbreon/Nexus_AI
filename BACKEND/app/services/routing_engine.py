@@ -17,6 +17,9 @@ from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 import math
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.modules.geospatial.models import NavEdge
 
 from app.services.geofence_engine import (
     HazardZone,
@@ -132,7 +135,7 @@ def check_segment_hazards(
     return len(affected_zones) > 0, list(affected_zones)
 
 
-def compute_direct_route(
+async def compute_direct_route(
     origin: Tuple[float, float],
     destination: Tuple[float, float],
     zones: List[HazardZone]
@@ -140,19 +143,47 @@ def compute_direct_route(
     """
     Compute a direct route and check for hazards.
     
-    This is a simplified routing for MVP.
-    In production, use pgRouting for actual road network routing.
+    Tries Google Maps API first, falls back to simple calculation.
     """
-    # Calculate direct distance
-    distance_km = haversine_distance(
-        origin[0], origin[1],
-        destination[0], destination[1]
-    )
+    # 1. Try Google Maps API for accurate distance/duration/polyline
+    from app.modules.geospatial.clients.google_maps import GoogleMapsRoutingClient
+    try:
+        gmaps = GoogleMapsRoutingClient()
+        gmaps_result = await gmaps.get_route(
+            {"lat": origin[0], "lon": origin[1]}, 
+            {"lat": destination[0], "lon": destination[1]}
+        )
+        
+        if gmaps_result:
+            # Use Google Maps data
+            # Distance comes in meters
+            distance_km = float(gmaps_result.get("distanceMeters", 0)) / 1000.0
+            
+            # Duration comes as "123s" string usually, need parsing if strictly needed, 
+            # but routing engine uses simplified minutes integer.
+            duration_str = gmaps_result.get("duration", "0s")
+            duration_seconds = int(duration_str.rstrip('s'))
+            eta_minutes = duration_seconds // 60
+            
+            # Use the detailed polyline from Google
+            # Note: We'd need to decode this polyline for hazard checking points
+            # For MVP, we stick to linear interpolation for hazard checking 
+            # OR we decode the polyline.
+            # Let's assume linear hazard check for now to match interface.
+        else:
+             raise ValueError("Google Maps returned no route")
+             
+    except Exception as e:
+        # Fallback to Haversine
+        # logger.warning(f"Google Maps Routing failed: {e}. Using fallback.")
+        distance_km = haversine_distance(
+            origin[0], origin[1],
+            destination[0], destination[1]
+        )
+        eta_minutes = int((distance_km / 30) * 60)
     
-    # Estimate ETA (assume 30 km/h average for disaster conditions)
-    eta_minutes = int((distance_km / 30) * 60)
-    
-    # Check for hazards along the route
+    # Check for hazards along the route (using linear interpolation for now)
+    # In V2, we should decode the google polyline
     is_blocked, affected_zones = check_segment_hazards(origin, destination, zones)
     
     # Create segment
@@ -197,7 +228,7 @@ def compute_direct_route(
     )
 
 
-def compute_detour_route(
+async def compute_detour_route(
     origin: Tuple[float, float],
     destination: Tuple[float, float],
     zones: List[HazardZone],
@@ -213,7 +244,7 @@ def compute_detour_route(
     hazard_centers = [(z.center_lat, z.center_lon, z.zone_id) for z in zones]
     
     if not hazard_centers:
-        return compute_direct_route(origin, destination, zones)
+        return await compute_direct_route(origin, destination, zones)
     
     # Calculate midpoint
     mid_lat = (origin[0] + destination[0]) / 2
@@ -295,7 +326,7 @@ def compute_detour_route(
     )
 
 
-def compute_safe_route(
+async def compute_safe_route(
     origin_lat: float,
     origin_lon: float,
     dest_lat: float,
@@ -327,19 +358,19 @@ def compute_safe_route(
     
     if not zones:
         # No hazards, return direct route
-        route = compute_direct_route(origin, destination, [])
+        route = await compute_direct_route(origin, destination, [])
         logger.info("route_computed", status="SAFE", hazards=0)
         return route
     
     # Try direct route
-    direct_route = compute_direct_route(origin, destination, zones)
+    direct_route = await compute_direct_route(origin, destination, zones)
     
     if direct_route.status == RouteStatus.SAFE:
         logger.info("route_computed", status="SAFE", hazards=len(zones))
         return direct_route
     
     # Try detour
-    detour_route = compute_detour_route(origin, destination, zones)
+    detour_route = await compute_detour_route(origin, destination, zones)
     
     logger.info(
         "route_computed",
@@ -372,3 +403,55 @@ def get_blocked_segments(zones: Optional[List[HazardZone]] = None) -> List[Dict[
         })
     
     return blocked
+
+
+async def get_full_network(db: AsyncSession) -> Dict[str, Any]:
+    """
+    Get the full road network for visualization.
+    Returns list of edges formatted as 'routes' for the dashboard.
+    """
+    # Use ST_AsText to get WKT string which is easier to parse quickly for MVP
+    # or ST_AsGeoJSON. Let's use ST_AsGeoJSON for direct usage.
+    stmt = select(NavEdge, func.ST_AsGeoJSON(NavEdge.geom).label('geojson'))
+    result = await db.execute(stmt)
+    rows = result.all()
+    
+    routes = []
+    
+    import json
+    
+    for row in rows:
+        edge = row[0]
+        geojson_str = row[1]
+        geometry = json.loads(geojson_str)
+        
+        # Extract coordinates from LineString [[lon, lat], [lon, lat]]
+        coordinates = geometry.get('coordinates', [])
+        
+        # Format segments for frontend
+        route_data = {
+            "id": str(edge.id),
+            "name": edge.name or f"Route {edge.id}",
+            "total_length_km": edge.base_cost,
+            "average_risk_score": 0, # Placeholder for risk integration
+            "coordinates": coordinates, # Pass raw coords [lon, lat] arrays
+            "segments": [
+                {
+                    "id": str(edge.id),
+                    "is_blocked": False,
+                    "risk_score": 0,
+                    "name": edge.name or "Segment",
+                    "length_km": edge.base_cost,
+                    "surface_type": edge.surface_type
+                }
+            ]
+        }
+        routes.append(route_data)
+        
+    return {
+        "routes": routes,
+        "lastUpdated": datetime.utcnow().isoformat(),
+        # Approximate bounds for North East (Assam) or dynamic
+        "bounds": { "north": 28.0, "south": 24.0, "east": 96.0, "west": 89.0 } 
+    }
+

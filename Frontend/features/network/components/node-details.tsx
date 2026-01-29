@@ -95,8 +95,8 @@ export function NodeDetails({ route, isOpen, onClose }: NodeDetailsProps) {
                 {route.average_risk_score > 70
                   ? "High"
                   : route.average_risk_score > 40
-                  ? "Medium"
-                  : "Low"}
+                    ? "Medium"
+                    : "Low"}
               </span>
             </div>
             <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
@@ -148,7 +148,7 @@ export function NodeDetails({ route, isOpen, onClose }: NodeDetailsProps) {
                         {segment.name}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {segment.length_km.toFixed(1)} km
+                        {segment.length_km?.toFixed(1) || "0.0"} km
                         {segment.surface_type &&
                           ` • ${segment.surface_type}`}
                       </p>
@@ -158,8 +158,8 @@ export function NodeDetails({ route, isOpen, onClose }: NodeDetailsProps) {
                         segment.risk_score > 70
                           ? "destructive"
                           : segment.risk_score > 40
-                          ? "secondary"
-                          : "default"
+                            ? "secondary"
+                            : "default"
                       }
                       className="rounded-lg"
                     >

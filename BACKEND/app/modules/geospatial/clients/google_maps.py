@@ -26,65 +26,84 @@ circuit_breaker = pybreaker.CircuitBreaker(
 
 class GoogleMapsRoutingClient:
     def __init__(self):
-        # In production this API key should come from settings
-        # Ensure GOOGLE_APPLICATION_CREDENTIALS or api_key is handled by the library
-        try:
-            self.client = routing_v2.RoutesClient()
-        except Exception as e:
-            logger.warning(f"Failed to initialize Google Maps RoutesClient (likely missing credentials): {e}")
-            logger.warning("Using Mock Client for development/verification.")
+        # We prefer the Settings API KEY
+        self.api_key = settings.GOOGLE_MAPS_API_KEY
+        
+        if self.api_key:
+            logger.info("Initializing Google Maps Client with API Key.")
+            try:
+                # For basic Routing V2 via REST (HTTP/1.1) when using ONLY API Key (not Service Account)
+                # The python client library strictly prefers ADC (Application Default Credentials).
+                # To use API Key directly, we might need to rely on direct HTTP requests 
+                # OR configure the client options carefully.
+                # For stability in this hybrid env, we will use a direct HTTP wrapper if API Key is present,
+                # effectively bypassing the library's strict auth requirements if they fail.
+                self.client = None # We will use direct requests in compute_route
+            except Exception as e:
+                logger.warning(f"Failed to init Google Maps: {e}")
+                self.client = self._create_mock_client()
+        else:
+            logger.warning("No Google Maps API Key found. Using Mock Client.")
             self.client = self._create_mock_client()
 
     def _create_mock_client(self):
-        # Simple mock to prevent startup crashes when verification runs without GCP creds
-        from unittest.mock import MagicMock
-        mock = MagicMock()
-        return mock
+        # ... validation mock ...
+        pass
 
     @circuit_breaker
     async def compute_route(self, origin: Dict[str, float], destination: Dict[str, float]) -> Optional[Dict[str, Any]]:
         """
-        Computes route using Google Maps Routes API V2.
-        
-        Field Masking: X-Goog-Field-Mask enforced (duration, distanceMeters, polyline)
+        Computes route using Google Maps Routes API.
         """
-        request = routing_v2.ComputeRoutesRequest(
-            origin=routing_v2.Waypoint(
-                location=routing_v2.Location(
-                    lat_lng={"latitude": origin["lat"], "longitude": origin["lon"]}
-                )
-            ),
-            destination=routing_v2.Waypoint(
-                 location=routing_v2.Location(
-                    lat_lng={"latitude": destination["lat"], "longitude": destination["lon"]}
-                )
-            ),
-            travel_mode=routing_v2.RouteTravelMode.DRIVE,
-        )
-
-        try:
-            # Field Masking Optimization
-            # Request only strictly needed fields
-            response = self.client.compute_routes(
-                request=request,
-                metadata=[("x-goog-field-mask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")]
-            )
-            
-            if response.routes:
-                route = response.routes[0]
-                return {
-                    "duration": route.duration,
-                    "distanceMeters": route.distance_meters,
-                    "polyline": route.polyline.encoded_polyline
-                }
+        if not self.api_key:
+            # Fallback to internal or returns None
             return None
-
-        except exceptions.GoogleAPICallError as e:
-            logger.error(f"Google Maps API call failed: {e}")
-            raise e
+            
+        import httpx
+        
+        url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": self.api_key,
+            "X-Goog-Field-Mask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
+        }
+        
+        body = {
+            "origin": {
+                "location": {
+                    "latLng": {"latitude": origin["lat"], "longitude": origin["lon"]}
+                }
+            },
+            "destination": {
+                "location": {
+                    "latLng": {"latitude": destination["lat"], "longitude": destination["lon"]}
+                }
+            },
+            "travelMode": "DRIVE"
+        }
+        
+        try:
+             async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=body, headers=headers, timeout=10.0)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if "routes" in data and data["routes"]:
+                        route = data["routes"][0]
+                        return {
+                            "duration": route.get("duration"),
+                            "distanceMeters": route.get("distanceMeters"),
+                            "polyline": route.get("polyline", {}).get("encodedPolyline")
+                        }
+                else:
+                    logger.error(f"Google Maps API Error: {response.status_code} {response.text}")
+                    return None
+                    
         except Exception as e:
-            logger.error(f"Unexpected error in Google Maps Client: {e}")
+            logger.error(f"Google Maps Request Failed: {e}")
             raise e
+        
+        return None
 
     async def get_route(self, origin: Dict, destination: Dict) -> Dict:
         """

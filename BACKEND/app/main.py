@@ -20,7 +20,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
+# app.add_middleware(SlowAPIMiddleware) # Disabled temporarily for debugging login hang
 
 from fastapi.middleware.cors import CORSMiddleware
 

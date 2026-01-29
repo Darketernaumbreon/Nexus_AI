@@ -221,3 +221,37 @@ def get_active_zones_endpoint() -> Dict[str, Any]:
         "expired": expired_count,
         "zones": [z.to_dict() for z in zones]
     }
+
+
+@router.get("/imd-rainfall")
+def get_imd_rainfall_endpoint(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get authoritative IMD rainfall data (Gridded).
+    """
+    from app.modules.environmental.tasks.imd_etl import fetch_imd_rainfall
+    from datetime import date, timedelta
+    
+    # Default to last 3 days if not specified
+    if not end_date:
+        end = date.today()
+    else:
+        end = date.fromisoformat(end_date)
+        
+    if not start_date:
+        start = end - timedelta(days=2) 
+    else:
+        start = date.fromisoformat(start_date)
+        
+    try:
+        data = fetch_imd_rainfall(start, end)
+        return {
+            "source": "IMD (Indian Meteorological Department)",
+            "count": len(data),
+            "data": data
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch IMD data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch IMD data")

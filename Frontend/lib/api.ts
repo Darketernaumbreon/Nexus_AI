@@ -38,14 +38,14 @@ export const HealthAPI = {
 
 export const NetworkAPI = {
     getRoadNetwork: async () => {
-        // Mock data for visualization - Backend does not expose full network dump yet
-        return {
-            routes: [],
-            lastUpdated: new Date().toISOString(),
-            bounds: { north: 28.5, south: 12.5, east: 78.5, west: 77.0 }
-        };
+        const response = await fetch(`${API_URL}/routing/network`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch road network');
+        return response.json();
     },
     getRouteDetails: async (id: string) => {
+        // Still mocked for detailed view pending backend support
         return {
             id,
             name: "Route " + id,
@@ -59,12 +59,20 @@ export const NetworkAPI = {
 
 export const WeatherAPI = {
     getWeatherGrid: async () => {
-        // Mock data for visualization
-        return {
-            cells: [],
-            alerts: [],
-            lastUpdated: new Date().toISOString()
-        };
+        // Fetch comprehensive weather grid from backend
+        // This includes both alert zones and general regional forecast
+        const response = await fetch(`${API_URL}/weather/grid`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch weather data');
+        return response.json();
+    },
+    getIMDRainfall: async () => {
+        const response = await fetch(`${API_URL}/alerts/imd-rainfall`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch IMD data');
+        return response.json();
     }
 };
 
@@ -76,7 +84,7 @@ export const RiskAPI = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ region_id: regionId })
+            body: JSON.stringify({ region_id: regionId, parameters: {} })
         });
 
         if (!response.ok) throw new Error('Simulation failed to start');
@@ -90,7 +98,6 @@ export const RiskAPI = {
         return response.json();
     },
     getSimulationResult: async (jobId: string) => {
-        // Reuse status endpoint as it returns result on completion
         return RiskAPI.getSimulationStatus(jobId);
     }
 };

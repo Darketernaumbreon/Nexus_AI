@@ -78,3 +78,27 @@ export function useWeatherAlerts(pollingInterval: number = 5 * 60 * 1000) {
     hasActiveAlerts: alerts.length > 0,
   };
 }
+
+export function useIMDRainfall() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const result = await WeatherAPI.getIMDRainfall();
+      setData(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch IMD data"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData };
+}

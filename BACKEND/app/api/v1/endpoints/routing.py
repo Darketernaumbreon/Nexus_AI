@@ -16,16 +16,21 @@ from fastapi import APIRouter, Query
 from app.services.routing_engine import (
     compute_safe_route,
     get_blocked_segments,
+    get_full_network,
+    get_full_network,
     RouteStatus
 )
 from app.core.logging import get_logger
+from app.api.deps import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query, Depends
 
 router = APIRouter()
 logger = get_logger("routing_api")
 
 
 @router.get("/safe")
-def get_safe_route(
+async def get_safe_route(
     origin_lat: float = Query(..., ge=-90, le=90, description="Origin latitude"),
     origin_lon: float = Query(..., ge=-180, le=180, description="Origin longitude"),
     dest_lat: float = Query(..., ge=-90, le=90, description="Destination latitude"),
@@ -45,7 +50,7 @@ def get_safe_route(
         dest_lon=dest_lon
     )
     
-    route = compute_safe_route(
+    route = await compute_safe_route(
         origin_lat=origin_lat,
         origin_lon=origin_lon,
         dest_lat=dest_lat,
@@ -77,7 +82,7 @@ def get_blocked_road_segments() -> Dict[str, Any]:
 
 
 @router.get("/check")
-def check_route_safety(
+async def check_route_safety(
     origin_lat: float = Query(..., ge=-90, le=90),
     origin_lon: float = Query(..., ge=-180, le=180),
     dest_lat: float = Query(..., ge=-90, le=90),
@@ -88,7 +93,7 @@ def check_route_safety(
     """
     logger.info("route_safety_check")
     
-    route = compute_safe_route(
+    route = await compute_safe_route(
         origin_lat=origin_lat,
         origin_lon=origin_lon,
         dest_lat=dest_lat,
@@ -101,3 +106,12 @@ def check_route_safety(
         "warnings": route.warnings,
         "avoided_hazards": route.avoided_hazards
     }
+
+
+@router.get("/network")
+async def get_road_network(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Get the full road network for visualization.
+    """
+    logger.info("network_stats_request")
+    return await get_full_network(db)
