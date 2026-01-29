@@ -1,0 +1,43 @@
+{
+  "features": [
+    "rainfall_mm",
+    "temperature_2m",
+    "catchment_area",
+    "mean_hand",
+    "mean_slope",
+    "rainfall_mm_lag_1",
+    "rainfall_mm_lag_2",
+    "rainfall_mm_lag_3",
+    "rainfall_mm_lag_5",
+    "rainfall_mm_lag_7",
+    "temperature_2m_lag_1",
+    "temperature_2m_lag_2",
+    "temperature_2m_lag_3",
+    "temperature_2m_lag_5",
+    "temperature_2m_lag_7",
+    "rainfall_mm_3d_sum",
+    "rainfall_mm_5d_sum",
+    "rainfall_mm_7d_sum"
+  ],
+  "feature_importance": {
+    "rainfall_mm": 0.11307304352521896,
+    "temperature_2m": 0.09850215911865234,
+    "catchment_area": 0.0,
+    "mean_hand": 0.0,
+    "mean_slope": 0.0,
+    "rainfall_mm_lag_1": 0.07550550252199173,
+    "rainfall_mm_lag_2": 0.03179623559117317,
+    "rainfall_mm_lag_3": 0.06230854615569115,
+    "rainfall_mm_lag_5": 0.05110421031713486,
+    "rainfall_mm_lag_7": 0.04844803735613823,
+    "temperature_2m_lag_1": 0.049667853862047195,
+    "temperature_2m_lag_2": 0.024563783779740334,
+    "temperature_2m_lag_3": 0.05386214330792427,
+    "temperature_2m_lag_5": 0.029795611277222633,
+    "temperature_2m_lag_7": 0.030317069962620735,
+    "rainfall_mm_3d_sum": 0.05442402884364128,
+    "rainfall_mm_5d_sum": 0.08381937444210052,
+    "rainfall_mm_7d_sum": 0.19281241297721863
+  },
+  "num_features": 18
+}

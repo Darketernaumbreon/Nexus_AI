@@ -15,6 +15,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
+import pytest
 
 # Add app to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -39,6 +40,13 @@ from app.core.logging import configure_logger
 
 # Configure logging
 configure_logger()
+
+@pytest.fixture(scope="module")
+def shared_gauge_data():
+    """Fixture to provide gauge data for tests"""
+    start_date = datetime(2024, 6, 1)
+    end_date = datetime(2024, 6, 7)
+    return fetch_cwc_station_data("GUW001", start_date, end_date)
 
 
 def test_gauge_validation():
@@ -165,19 +173,14 @@ def test_timeseries_cleaning():
     print("\n[PASS] Time-series cleaning")
 
 
-def test_cwc_scraping():
+def test_cwc_scraping(shared_gauge_data):
     """Test 4: CWC Flood Gauge Scraping"""
     print("\n" + "="*60)
     print("TEST 4: CWC Flood Gauge Scraping")
     print("="*60)
     
-    # Fetch mock data
-    start_date = datetime(2024, 6, 1)
-    end_date = datetime(2024, 6, 7)
-    
-    print(f"\nFetching CWC data: {start_date} to {end_date}")
-    
-    df = fetch_cwc_station_data("GUW001", start_date, end_date)
+    # Use fixture
+    df = shared_gauge_data
     
     print(f"\n[OK] Data fetched: {len(df)} rows")
     print(f"\nFirst 5 rows:")
@@ -201,8 +204,9 @@ def test_cwc_scraping():
     return df
 
 
-def test_flood_label_generation(gauge_df):
+def test_flood_label_generation(shared_gauge_data):
     """Test 5: Flood Label Generation"""
+    gauge_df = shared_gauge_data
     print("\n" + "="*60)
     print("TEST 5: Flood Label Generation")
     print("="*60)

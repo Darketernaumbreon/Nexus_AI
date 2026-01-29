@@ -17,7 +17,7 @@ import xgboost as xgb
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from ml_engine.training.feature_engineering import get_feature_columns
+from training.feature_engineering import get_feature_columns
 
 logger = get_logger("train_xgb")
 

@@ -11,27 +11,37 @@ Tests:
 Author: NEXUS-AI Team
 """
 
+import pytest
 import sys
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
 import numpy as np
 
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent))
+# Add BACKEND to path for app imports
+backend_path = Path(__file__).parent.parent.parent / "BACKEND"
+sys.path.insert(0, str(backend_path))
 
-from ml_engine.training.mock_landslide_inventory import (
+# Load environment variables from BACKEND/.env
+from dotenv import load_dotenv
+load_dotenv(backend_path / ".env")
+
+# Add ML_PIPELINE to path for training imports
+ml_pipeline_path = Path(__file__).parent.parent
+sys.path.insert(0, str(ml_pipeline_path))
+
+from training.mock_landslide_inventory import (
     generate_mock_landslide_inventory,
     save_mock_inventory
 )
-from ml_engine.training.dataset_builder_landslide import build_landslide_dataset
-from ml_engine.training.feature_engineering import engineer_landslide_features
-from ml_engine.training.train_xgb import (
+from training.dataset_builder_landslide import build_landslide_dataset
+from training.feature_engineering import engineer_landslide_features
+from training.train_xgb import (
     prepare_train_test_split,
     train_xgboost_model,
     save_model_artifacts
 )
-from ml_engine.training.evaluation import (
+from training.evaluation import (
     evaluate_model,
     find_optimal_threshold
 )
@@ -40,8 +50,8 @@ from app.core.logging import configure_logger
 # Configure logging
 configure_logger()
 
-
-def test_mock_inventory():
+@pytest.fixture(scope="module")
+def mock_inventory_data():
     """Test 1: Mock Landslide Inventory"""
     print("\n" + "="*60)
     print("TEST 1: Mock Landslide Inventory Generation")
@@ -65,8 +75,6 @@ def test_mock_inventory():
     )
     
     print(f"\n[OK] Generated {len(inventory)} landslide events")
-    print(f"\nFirst 5 events:")
-    print(inventory.head())
     
     # Validation
     assert len(inventory) == 100, "Incorrect number of events"
@@ -74,26 +82,32 @@ def test_mock_inventory():
     assert 'lon' in inventory.columns, "Missing lon"
     assert 'date' in inventory.columns, "Missing date"
     
-    # Save
-    save_mock_inventory(inventory, "data/landslide_inventory_mock.csv")
+    # Save to datasets folder relative to ML_PIPELINE root
+    # assuming running from ML_PIPELINE root or test file loc
+    # Let's use absolute path to be safe
+    datasets_dir = ml_pipeline_path / "datasets"
+    datasets_dir.mkdir(exist_ok=True)
+    save_path = datasets_dir / "landslide_inventory_mock.csv"
+    
+    save_mock_inventory(inventory, str(save_path))
     
     print("\n[PASS] Mock inventory generation")
     return inventory, bbox  # Return bbox to reuse
 
-
-def test_dataset_construction(inventory, bbox):
+@pytest.fixture(scope="module")
+def landslide_dataset(mock_inventory_data):
     """Test 2: Grid-Based Dataset Construction"""
     print("\n" + "="*60)
     print("TEST 2: Grid-Based Dataset Construction")
     print("="*60)
+    
+    inventory, bbox = mock_inventory_data
     
     # Use the SAME bbox as generation to ensure overlap
     start_date = datetime(2024, 6, 1)
     end_date = datetime(2024, 7, 31)  # 2 months
     
     print(f"\nBuilding dataset...")
-    print(f"  Grid: 1km × 1km cells")
-    print(f"  Period: {start_date.date()} to {end_date.date()}")
     
     df = build_landslide_dataset(
         bbox=bbox,
@@ -105,10 +119,6 @@ def test_dataset_construction(inventory, bbox):
     )
     
     print(f"\n[OK] Dataset built: {len(df)} rows")
-    print(f"\nColumns: {list(df.columns)}")
-    print(f"\nClass distribution:")
-    print(df['label'].value_counts())
-    print(f"Positive rate: {df['label'].mean()*100:.2f}%")
     
     # Validation
     assert len(df) > 0, "Dataset is empty"
@@ -116,16 +126,16 @@ def test_dataset_construction(inventory, bbox):
     assert 'rainfall_mm' in df.columns, "Missing rainfall"
     assert 'label' in df.columns, "Missing label"
     
-    print("\n[PASS] Dataset construction")
     return df
 
-
-def test_feature_engineering(df):
+@pytest.fixture(scope="module")
+def landslide_features(landslide_dataset):
     """Test 3: Landslide Feature Engineering"""
     print("\n" + "="*60)
     print("TEST 3: Landslide Feature Engineering")
     print("="*60)
     
+    df = landslide_dataset
     print(f"\nEngineering landslide-specific features...")
     
     df_features = engineer_landslide_features(df)
@@ -136,29 +146,22 @@ def test_feature_engineering(df):
     exclude_cols = {'date', 'grid_id', 'label', 'num_events', 'center_lon', 'center_lat', 'geometry'}
     feature_cols = [col for col in df_features.columns if col not in exclude_cols]
     
-    print(f"\nFeature count: {len(feature_cols)}")
-    print(f"\nFeatures created:")
-    for col in sorted(feature_cols)[:15]:  # Show first 15
-        print(f"  - {col}")
-    
     # Validation
     assert 'rainfall_mm_ari_14d' in feature_cols, "Missing ARI features"
     assert 'slope_rainfall_interaction' in feature_cols, "Missing physics interactions"
     assert 'slope' in feature_cols, "Missing static features"
     
-    print(f"\nSample features:")
-    print(df_features[feature_cols[:5]].head())
-    
-    print("\n[PASS] Feature engineering")
     return df_features
 
 
-def test_model_training(df_features):
+@pytest.fixture(scope="module")
+def landslide_model_data(landslide_features):
     """Test 4: XGBoost Training with Extreme Imbalance"""
     print("\n" + "="*60)
     print("TEST 4: XGBoost Training (Extreme Imbalance)")
     print("="*60)
     
+    df_features = landslide_features
     # Get feature columns
     exclude_cols = {'date', 'grid_id', 'label', 'num_events', 'center_lon', 'center_lat', 'geometry'}
     feature_cols = [col for col in df_features.columns if col not in exclude_cols]
@@ -175,11 +178,6 @@ def test_model_training(df_features):
     X_test = X.iloc[split_idx:]
     y_train = y.iloc[:split_idx]
     y_test = y.iloc[split_idx:]
-    
-    print(f"\nTrain set: {len(X_train)} rows")
-    print(f"Test set: {len(X_test)} rows")
-    print(f"Train positive rate: {y_train.mean()*100:.2f}%")
-    print(f"Test positive rate: {y_test.mean()*100:.2f}%")
     
     # Train model with extreme imbalance handling
     print("\nTraining XGBoost model...")
@@ -201,20 +199,20 @@ def test_model_training(df_features):
     model = train_xgboost_model(X_train, y_train, params=params)
     
     print(f"\n[OK] Model trained")
-    print(f"Features used: {len(feature_cols)}")
     
     # Validation
     assert model is not None, "Model training failed"
     
-    print("\n[PASS] Model training")
     return model, X_train, X_test, y_train, y_test, feature_cols
 
 
-def test_model_evaluation(model, X_test, y_test):
+def test_model_evaluation(landslide_model_data):
     """Test 5: Model Evaluation"""
     print("\n" + "="*60)
     print("TEST 5: Model Evaluation")
     print("="*60)
+    
+    model, X_train, X_test, y_train, y_test, feature_cols = landslide_model_data
     
     # Find optimal threshold
     print("\nFinding optimal threshold (F2-score)...")
@@ -226,7 +224,6 @@ def test_model_evaluation(model, X_test, y_test):
     )
     
     print(f"\nOptimal threshold: {optimal_threshold:.2f}")
-    print(f"F2-score: {f2_score:.3f}")
     
     # Evaluate
     print("\nEvaluating model...")
@@ -249,15 +246,20 @@ def test_model_evaluation(model, X_test, y_test):
     # With only ~1 positive sample in test set, recall of 0.0 is possible
     assert metrics['roc_auc'] >= 0.1, "ROC-AUC too low" # relaxed
     
-    print("\n[PASS] Model evaluation")
     return metrics, optimal_threshold
 
 
-def test_save_artifacts(model, feature_names, metrics, optimal_threshold):
+def test_save_artifacts(landslide_model_data, tmp_path):
     """Test 6: Save Artifacts"""
     print("\n" + "="*60)
     print("TEST 6: Save Artifacts")
     print("="*60)
+    
+    model, X_train, X_test, y_train, y_test, feature_names = landslide_model_data
+    
+    # Recalc metrics for saving
+    optimal_threshold, f2_score = find_optimal_threshold(model, X_test, y_test, metric='f2')
+    metrics = evaluate_model(model, X_test, y_test, threshold=optimal_threshold)
     
     # Prepare thresholds
     thresholds = {
@@ -268,8 +270,19 @@ def test_save_artifacts(model, feature_names, metrics, optimal_threshold):
     }
     
     # Create landslide artifacts directory
-    from pathlib import Path
-    artifacts_dir = Path("ml_engine/artifacts/landslide")
+    # from pathlib import Path
+    # artifacts_dir = Path("ml_engine/artifacts/landslide")
+    
+    # Use backend_path calculated at top of file
+    # backend_path was defined in global scope of this file in previous edit
+    # but since it's inside functions previously, wait.
+    # backend_path was defined at module level in previous replace_file_content.
+    # So I can access it.
+    
+    # Wait, in the previous edit to this file, I added `backend_path` at the top level.
+    # So `ml_pipeline_path` and `backend_path` are available.
+    
+    artifacts_dir = backend_path / "ml_engine/artifacts/landslide"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     
     # Save (to landslide subdirectory)
@@ -301,56 +314,3 @@ def test_save_artifacts(model, feature_names, metrics, optimal_threshold):
     print(f"\n[OK] Artifacts saved to {artifacts_dir}")
     
     print("\n[PASS] Save artifacts")
-
-
-def main():
-    """Run all tests"""
-    print("="*60)
-    print("LANDSLIDE PREDICTION MODEL TEST SUITE (TASK 9B)")
-    print("="*60)
-    
-    try:
-        # Test 1: Mock inventory
-        inventory, bbox = test_mock_inventory()
-        
-        # Test 2: Dataset construction
-        df = test_dataset_construction(inventory, bbox)
-        
-        # Test 3: Feature engineering
-        df_features = test_feature_engineering(df)
-        
-        # Test 4: Model training
-        model, X_train, X_test, y_train, y_test, feature_names = test_model_training(df_features)
-        
-        # Test 5: Evaluation
-        metrics, optimal_threshold = test_model_evaluation(model, X_test, y_test)
-        
-        # Test 6: Save artifacts
-        test_save_artifacts(model, feature_names, metrics, optimal_threshold)
-        
-        # Summary
-        print("\n" + "="*60)
-        print("[PASS] ALL TESTS PASSED")
-        print("="*60)
-        
-        print("\nTask 9B Summary:")
-        print(f"  [OK] Mock landslide inventory generated (50 events)")
-        print(f"  [OK] Grid-based dataset constructed (1km cells)")
-        print(f"  [OK] Landslide features engineered: ARI, slope×rainfall")
-        print(f"  [OK] XGBoost model trained (extreme imbalance handling)")
-        print(f"  [OK] Recall: {metrics['recall']:.3f}, F2-Score: {metrics['f2_score']:.3f}")
-        print(f"  [OK] Artifacts saved to ml_engine/artifacts/landslide/")
-        
-        print("\nLandslide model ready (Task 9B complete)")
-        
-    except Exception as e:
-        print(f"\n[FAIL] TEST FAILED: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
-    
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())
