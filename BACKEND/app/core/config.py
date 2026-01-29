@@ -10,13 +10,14 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str = "nexus_ai"
+    POSTGRES_PORT: int = 5432
     SQLALCHEMY_DATABASE_URI: str | None = None
 
     @property
     def DATABASE_URL(self) -> str:
         if self.SQLALCHEMY_DATABASE_URI:
             return self.SQLALCHEMY_DATABASE_URI
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # AUTHENTICATION
     # RS256 keys - In production, use file paths or secrets manager.
@@ -47,11 +48,12 @@ class Settings(BaseSettings):
     # REDIS
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str | None = None
 
     @property
     def REDIS_SETTINGS(self):
         from arq.connections import RedisSettings
-        return RedisSettings(host=self.REDIS_HOST, port=self.REDIS_PORT)
+        return RedisSettings(host=self.REDIS_HOST, port=self.REDIS_PORT, password=self.REDIS_PASSWORD)
 
     # OPENTOPOGRAPHY & DEM ACQUISITION
     OPENTOPOGRAPHY_API_KEY: str
