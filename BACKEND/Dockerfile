@@ -12,8 +12,15 @@ WORKDIR /app
 # Install system dependencies (if any needed for asyncpg/etc build, usually slim has enough for pure python wheels, 
 # but sometimes we need build-essential. For now, simplest path.)
 # We might need libpq-dev for psycopg2, but we are using asyncpg.
+# Install system dependencies
+# build-essential & libpq-dev for asyncpg/psycopg2/argon2 compilation
+# gdal-bin & libgdal-dev for geospatial libraries if wheels fallback to source
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    build-essential \
+    libpq-dev \
+    gcc \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
