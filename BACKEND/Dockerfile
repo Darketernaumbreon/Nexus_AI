@@ -1,6 +1,6 @@
 
-# Base image: python:3.11-slim
-FROM python:3.11-slim
+# Base image: python:3.11 (Full Bookworm version for better wheel compatibility)
+FROM python:3.11-bookworm
 
 # Prevent Python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -9,26 +9,25 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (if any needed for asyncpg/etc build, usually slim has enough for pure python wheels, 
-# but sometimes we need build-essential. For now, simplest path.)
-# We might need libpq-dev for psycopg2, but we are using asyncpg.
 # Install system dependencies
-# build-essential & libpq-dev for asyncpg/psycopg2/argon2 compilation
-# gdal-bin & libgdal-dev for geospatial libraries if wheels fallback to source
-# Install system dependencies
-# build-essential & libpq-dev for asyncpg/psycopg2/argon2 compilation
-# libgdal-dev & gdal-bin are CRITICAL for rasterio/geopandas/fiona
+# cmake: for xgboost
+# gdal: for rasterio/fiona
+# build-essential: for compilation
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
     build-essential \
+    cmake \
     libpq-dev \
-    gcc \
-    g++ \
-    make \
-    python3-dev \
     libgdal-dev \
     gdal-bin \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
+
+# Set GDAL environment variables to help pip find headers
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
+
+# Update pip and install build seeds
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel numpy cython
 
 # Create a non-root user
 # Group: appgroup (gid 1000)
