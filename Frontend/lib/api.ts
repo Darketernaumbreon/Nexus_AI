@@ -1,28 +1,48 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
 export const AuthAPI = {
     login: async (data: any) => {
-        // Placeholder login - connects to backend /token typically
-        const response = await fetch('/api/v1/auth/access-token', {
+        const formData = new URLSearchParams();
+        formData.append('username', data.username);
+        formData.append('password', data.password);
+
+        const response = await fetch(`${API_URL}/iam/login/access-token`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(data),
+            body: formData,
         });
-        if (!response.ok) throw new Error('Login failed');
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Login failed');
+        }
         return response.json();
     }
 };
 
 export const HealthAPI = {
     checkHealth: async () => {
-        return { isAlive: true, isReady: true, lastCheck: new Date() };
+        try {
+            const response = await fetch(`${API_URL}/health/ready`);
+            const data = await response.json();
+            return {
+                isAlive: response.ok,
+                isReady: data.status === "ready",
+                lastCheck: new Date()
+            };
+        } catch (e) {
+            return { isAlive: false, isReady: false, lastCheck: new Date() };
+        }
     }
 };
 
 export const NetworkAPI = {
     getRoadNetwork: async () => {
+        // Mock data for visualization - Backend does not expose full network dump yet
         return {
             routes: [],
             lastUpdated: new Date().toISOString(),
-            bounds: { north: 0, south: 0, east: 0, west: 0 }
+            bounds: { north: 28.5, south: 12.5, east: 78.5, west: 77.0 }
         };
     },
     getRouteDetails: async (id: string) => {
@@ -39,6 +59,7 @@ export const NetworkAPI = {
 
 export const WeatherAPI = {
     getWeatherGrid: async () => {
+        // Mock data for visualization
         return {
             cells: [],
             alerts: [],
@@ -49,41 +70,28 @@ export const WeatherAPI = {
 
 export const RiskAPI = {
     startSimulation: async (regionId: string) => {
-        return {
-            job_id: "sim-" + regionId,
-            region_id: regionId,
-            status: "QUEUED" as const,
-            progress: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
+        const response = await fetch(`${API_URL}/operational/simulate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ region_id: regionId })
+        });
+
+        if (!response.ok) throw new Error('Simulation failed to start');
+        return response.json();
     },
     getSimulationStatus: async (jobId: string) => {
-        return {
-            job_id: jobId,
-            region_id: "r1",
-            status: "COMPLETED" as const,
-            progress: 100,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
+        const response = await fetch(`${API_URL}/operational/jobs/${jobId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch job status');
+        return response.json();
     },
     getSimulationResult: async (jobId: string) => {
-        return {
-            job_id: jobId,
-            region_id: "r1",
-            status: "COMPLETED" as const,
-            progress: 100,
-            results: {
-                risk_assessment: {
-                    overall_score: 0.5,
-                    confidence: 0.9,
-                    factors: []
-                },
-                recommendations: [],
-                affected_routes: []
-            }
-        };
+        // Reuse status endpoint as it returns result on completion
+        return RiskAPI.getSimulationStatus(jobId);
     }
 };
 
