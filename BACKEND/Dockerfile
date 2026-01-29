@@ -15,12 +15,19 @@ WORKDIR /app
 # Install system dependencies
 # build-essential & libpq-dev for asyncpg/psycopg2/argon2 compilation
 # gdal-bin & libgdal-dev for geospatial libraries if wheels fallback to source
+# Install system dependencies
+# build-essential & libpq-dev for asyncpg/psycopg2/argon2 compilation
+# libgdal-dev & gdal-bin are CRITICAL for rasterio/geopandas/fiona
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     libpq-dev \
     gcc \
+    g++ \
+    make \
     python3-dev \
+    libgdal-dev \
+    gdal-bin \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
