@@ -13,6 +13,12 @@ echo [2/4] Waiting for Database...
 timeout /t 5
 
 echo.
+echo [2.5/4] Seeding Database (Ensuring North East Data)...
+cd BACKEND
+python -m app.initial_data
+cd ..
+
+echo.
 echo [3/4] Starting Backend Server...
 start "Nexus Backend" cmd /k "cd BACKEND && echo Starting Backend... && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
