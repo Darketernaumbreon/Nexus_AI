@@ -4,6 +4,12 @@ echo      NEXUS-AI: HYBRID LOCAL LAUNCHER
 echo      (Bypassing Docker Build Issues)
 echo ==========================================
 
+:: Set Environment Variables for Local Execution
+set POSTGRES_SERVER=localhost
+set POSTGRES_USER=postgres
+set POSTGRES_PASSWORD=password
+set POSTGRES_DB=nexus_ai
+
 echo.
 echo [1/4] Starting Database & Redis (Docker)...
 docker-compose up -d db redis
