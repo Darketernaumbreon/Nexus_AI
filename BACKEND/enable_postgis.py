@@ -8,7 +8,7 @@ from sqlalchemy import text
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Hardcode URL for reliability in this script matching .env
-DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/nexus_ai"
+DATABASE_URL = "postgresql+asyncpg://postgres:deb172006@localhost:5432/nexus_ai"
 
 async def enable_postgis():
     engine = create_async_engine(DATABASE_URL, echo=True)
