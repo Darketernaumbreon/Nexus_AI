@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Clock, History, Zap, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
+import { NetworkAPI } from "@/lib/api";
 
 export default function RiskPage() {
   // State for simulations
@@ -22,8 +22,8 @@ export default function RiskPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await api.get('/routing/routes'); // Get all routes
-        const routes = res.data;
+        const res = await NetworkAPI.getRoadNetwork(); // Get all routes
+        const routes = res.routes;
 
         // Map routes to simulation format
         const sims = routes.slice(0, 5).map((r: any) => ({
