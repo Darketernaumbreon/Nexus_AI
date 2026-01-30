@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database with PostGIS
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: nexus-ai-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nexus_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nexus-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - nexus-network
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus-ai-backend
+    environment:
+      # Database
+      POSTGRES_SERVER: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nexus_ai
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # API Keys (replace with your keys)
+      OPENTOPOGRAPHY_API_KEY: ${OPENTOPOGRAPHY_API_KEY:-6edea2848557220e2ffeae77ff336885}
+      OPENROUTE_API_KEY: ${OPENROUTE_API_KEY:-eyJvcmciOiI1YjNjZTM1OTc4NTExMDAwMDFjZjYyNDgiLCJpZCI6IjkxMDM5N2M0ZjM1ODQxMWJhMDIyYzAyOTFiZDhkMzU2IiwiaCI6Im11cm11cjY0In0=}
+      
+      # Paths
+      ML_ARTIFACTS_DIR: ml_engine/artifacts
+      WEATHER_CACHE_DIR: data/weather_cache
+      DEM_CACHE_DIR: data/dem_cache
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/ml_engine/artifacts:/app/ml_engine/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - nexus-network
+    restart: unless-stopped
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nexus-ai-frontend
+    environment:
+      # Backend API
+      NEXT_PUBLIC_API_BASE: /api/proxy
+      BACKEND_URL: http://backend:8000
+      
+      # Mapbox (replace with your token)
+      NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:-your_mapbox_token_here}
+      
+      # Demo Mode
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - nexus-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: nexus-ai-postgres-data
+  redis_data:
+    name: nexus-ai-redis-data
+
+networks:
+  nexus-network:
+    name: nexus-ai-network
+    driver: bridge

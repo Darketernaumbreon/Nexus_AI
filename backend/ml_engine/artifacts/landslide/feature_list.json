@@ -1,0 +1,26 @@
+{
+  "features": [
+    "slope",
+    "aspect",
+    "curvature",
+    "elevation",
+    "rainfall_mm",
+    "temperature",
+    "rainfall_mm_ari_3d",
+    "rainfall_mm_ari_7d",
+    "rainfall_mm_ari_14d",
+    "rainfall_mm_ari_30d",
+    "rainfall_mm_lag_1",
+    "rainfall_mm_lag_3",
+    "rainfall_mm_lag_7",
+    "temperature_lag_1",
+    "temperature_lag_3",
+    "temperature_lag_7",
+    "rainfall_mm_3d_sum",
+    "rainfall_mm_7d_sum",
+    "slope_rainfall_interaction",
+    "slope_ari14d_interaction",
+    "curvature_rainfall_interaction"
+  ],
+  "num_features": 21
+}
