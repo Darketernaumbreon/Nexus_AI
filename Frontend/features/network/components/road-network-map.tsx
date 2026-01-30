@@ -34,6 +34,7 @@ export function RoadNetworkMap({
   selectedRouteId,
   onRouteSelect,
   showWeatherLayer = false,
+  weatherCells,
 }: RoadNetworkMapProps) {
   const [zoom, setZoom] = useState(1);
 
@@ -96,8 +97,6 @@ export function RoadNetworkMap({
               linear-gradient(to bottom, var(--border) 1px, transparent 1px)
             `,
             backgroundSize: "40px 40px",
-          }}
-          backgroundSize: "40px 40px",
           }}
         />
 
