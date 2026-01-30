@@ -433,13 +433,13 @@ async def get_full_network(db: AsyncSession) -> Dict[str, Any]:
             "id": str(edge.id),
             "name": edge.name or f"Route {edge.id}",
             "total_length_km": edge.base_cost,
-            "average_risk_score": 0, # Placeholder for risk integration
-            "coordinates": coordinates, # Pass raw coords [lon, lat] arrays
+            "average_risk_score": int((hash(str(edge.id)) % 100)), # Simulated Risk for Demo
+            "coordinates": coordinates,
             "segments": [
                 {
                     "id": str(edge.id),
-                    "is_blocked": False,
-                    "risk_score": 0,
+                    "is_blocked": (hash(str(edge.id)) % 20) == 0, # 5% chance of blockage
+                    "risk_score": int((hash(str(edge.id)) % 100)),
                     "name": edge.name or "Segment",
                     "length_km": edge.base_cost,
                     "surface_type": edge.surface_type
