@@ -21,7 +21,7 @@ async def login_access_token(
     OAuth2 compatible token login, get an access token for future requests
     """
     # TODO: Migrate this logic to a service layer for strict separation
-    result = await db.execute(select(User).filter(User.email == form_data.username))
+    result = await db.execute(select(User).filter(User.email == form_data.username.strip()))
     user = result.scalars().first()
     
     if not user or not security.verify_password(form_data.password, user.hashed_password):

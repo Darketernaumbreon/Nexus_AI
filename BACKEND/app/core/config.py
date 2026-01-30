@@ -30,14 +30,14 @@ class Settings(BaseSettings):
         # Note: BaseSettings usually loads from env. If env is missing, we load from file.
         if not self.PRIVATE_KEY:
             try:
-                with open("private.pem", "r") as f:
+                with open("private.pem", "rb") as f:
                     self.PRIVATE_KEY = f.read()
             except FileNotFoundError:
                 pass # Handle gracefully or let it fail later
         
         if not self.PUBLIC_KEY:
             try:
-                with open("public.pem", "r") as f:
+                with open("public.pem", "rb") as f:
                     self.PUBLIC_KEY = f.read()
             except FileNotFoundError:
                 pass
