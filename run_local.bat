@@ -19,8 +19,9 @@ echo [2/4] Waiting for Database...
 timeout /t 5
 
 echo.
-echo [2.5/4] Seeding Database (Ensuring North East Data)...
+echo [2.2/4] Installing Python Dependencies...
 cd BACKEND
+pip install -r requirements.txt
 python -m app.initial_data
 cd ..
 
