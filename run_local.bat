@@ -23,7 +23,7 @@ echo.
 echo [2.2/4] Installing Python Dependencies...
 cd BACKEND
 pip install -r requirements.txt
-python -m app.initial_data
+python force_refresh_data.py
 cd ..
 
 echo.
