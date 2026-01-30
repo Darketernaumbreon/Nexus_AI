@@ -76,7 +76,7 @@ export function useStartSimulation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: SimulationRequest) => RiskAPI.runSimulation(request),
+    mutationFn: (request: SimulationRequest) => RiskAPI.startSimulation(request.region_id),
     onSuccess: (data) => {
       // Invalidate simulation queries when a new one starts
       queryClient.invalidateQueries({ queryKey: ["simulation"] });

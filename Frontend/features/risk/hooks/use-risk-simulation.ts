@@ -101,7 +101,7 @@ export function useRiskSimulation(): UseRiskSimulationReturn {
       setStatus("QUEUED");
 
       try {
-        const job = await RiskAPI.runSimulation(params);
+        const job = await RiskAPI.startSimulation(params.region_id);
         setJobId(job.job_id);
         setStatus(job.status);
 
