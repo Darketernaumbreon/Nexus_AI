@@ -164,3 +164,11 @@ generate_keys.py
 
 # Dev Scripts
 verify_all_phases.py
+
+# Debug scripts
+debug_*.py
+verify_*.py
+check_tables.py
+manual_create_user.py
+reset_alembic.py
+check_backend_data*.py
