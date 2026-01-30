@@ -11,6 +11,10 @@ COPY package.json package-lock.json* ./
 # Use legacy-peer-deps to avoid conflicts with newer React/Next versions
 RUN npm install --legacy-peer-deps
 
+# Build args
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build the app
 COPY . .
 RUN npm run build

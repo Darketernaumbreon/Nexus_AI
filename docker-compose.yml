@@ -49,12 +49,13 @@ services:
       - "8000:8000"
     volumes:
       - ./BACKEND:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
     container_name: nexus_frontend
     depends_on:
       - backend

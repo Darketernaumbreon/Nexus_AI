@@ -13,6 +13,7 @@ interface RoadNetworkMapProps {
   selectedRouteId?: string | null;
   onRouteSelect?: (routeId: string) => void;
   showWeatherLayer?: boolean;
+  weatherCells?: any[]; // Using any for brevity, strictly should be WeatherCell[]
 }
 
 // Risk score to color mapping
@@ -96,6 +97,8 @@ export function RoadNetworkMap({
             `,
             backgroundSize: "40px 40px",
           }}
+          backgroundSize: "40px 40px",
+          }}
         />
 
         <svg
@@ -104,6 +107,30 @@ export function RoadNetworkMap({
           viewBox="0 0 400 300"
           preserveAspectRatio="xMidYMid meet"
         >
+          {/* Weather Layer (Heatmap) */}
+          {showWeatherLayer && weatherCells && weatherCells.map((cell) => {
+            // Project cell coordinates
+            const pt = project(cell.lon, cell.lat).split(' ');
+            const cx = parseFloat(pt[0]);
+            const cy = parseFloat(pt[1]);
+
+            // Color based on Intensity (Rainfall)
+            // 0mm: Transparent/BlueLow, >10mm: BlueHigh
+            const opacity = Math.min(0.6, Math.max(0.1, cell.rainfall_mm / 20));
+
+            return (
+              <circle
+                key={cell.id}
+                cx={cx}
+                cy={cy}
+                r={15}
+                fill="blue"
+                fillOpacity={opacity}
+                className="animate-pulse-slow"
+              />
+            );
+          })}
+
           {/* Render Routes */}
           {routes.map((route) => {
             const isSelected = route.id === selectedRouteId;
@@ -189,10 +216,7 @@ export function RoadNetworkMap({
         </Button>
       </div>
 
-      {/* DEBUG OVERLAY */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white p-2 rounded text-[10px] font-mono z-50 pointer-events-none max-w-xs overflow-hidden">
-        <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-      </div>
+      {/* DEBUG OVERLAY REMOVED for Production */}
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-xl p-3 shadow-soft z-10">

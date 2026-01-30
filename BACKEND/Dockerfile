@@ -47,9 +47,12 @@ RUN chown -R appuser:appgroup /app
 # Switch to non-root user
 USER appuser
 
+# Copy scripts
+COPY scripts/ /app/scripts/
+RUN chmod +x /app/scripts/start.sh
+
 # Expose port (documentary)
 EXPOSE 8000
 
-# Command to run the application
-# Using uvicorn directly for now, usually behind gunicorn in prod but prompt asked for initializing FastAPI/Starlette
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application using the startup script
+CMD ["/app/scripts/start.sh"]

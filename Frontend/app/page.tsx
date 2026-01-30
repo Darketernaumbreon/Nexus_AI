@@ -24,10 +24,12 @@ import {
   Droplets,
   CheckCircle,
   Clock,
+  Layers,
 } from "lucide-react";
 import { useRoadNetwork } from "@/features/network/hooks/use-road-network";
 import { useWeatherGrid, useWeatherAlerts, useIMDRainfall } from "@/features/weather/hooks/use-weather";
 import { CardSkeleton } from "@/components/feedback/skeleton-loader";
+import { RoadNetworkMap } from "@/features/network/components/road-network-map";
 
 export default function DashboardPage() {
   const { data: networkData, isLoading: networkLoading } = useRoadNetwork();
@@ -189,75 +191,87 @@ export default function DashboardPage() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Route Risk Overview */}
-          <Card className="lg:col-span-2 rounded-2xl shadow-soft border-border">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    Route Risk Overview
-                  </CardTitle>
-                  <CardDescription>
-                    Current risk assessment for monitored routes
-                  </CardDescription>
+          {/* Network Map & Route Risk Overview */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* MAP COMPONENT - ADDED for V2 */}
+            <Card className="rounded-2xl shadow-soft border-border p-1 h-[400px]">
+              <RoadNetworkMap
+                routes={networkData?.routes || []}
+                showWeatherLayer={true}
+                weatherCells={weatherData?.cells || []}
+              />
+            </Card>
+
+            <Card className="rounded-2xl shadow-soft border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-foreground">
+                      Route Risk Overview
+                    </CardTitle>
+                    <CardDescription>
+                      Current risk assessment for monitored routes
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" asChild className="rounded-lg">
+                    <Link href="/network">
+                      View All
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
                 </div>
-                <Button variant="ghost" asChild className="rounded-lg">
-                  <Link href="/network">
-                    View All
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {networkLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-16 rounded-xl animate-shimmer" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {networkData?.routes.slice(0, 4).map((route) => (
-                    <div
-                      key={route.id}
-                      className="flex items-center justify-between rounded-xl border border-border p-4"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {route.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {route.total_length_km.toFixed(1)} km •{" "}
-                          {route.segments.length} segments
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="w-32 hidden sm:block">
-                          <Progress
-                            value={route.average_risk_score}
-                            className="h-2"
-                          />
+              </CardHeader>
+              <CardContent>
+                {networkLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-16 rounded-xl animate-shimmer" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {networkData?.routes.slice(0, 4).map((route) => (
+                      <div
+                        key={route.id}
+                        className="flex items-center justify-between rounded-xl border border-border p-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {route.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {route.total_length_km.toFixed(1)} km •{" "}
+                            {route.segments.length} segments
+                          </p>
                         </div>
-                        <Badge
-                          variant={
-                            route.average_risk_score > 70
-                              ? "destructive"
-                              : route.average_risk_score > 40
-                                ? "secondary"
-                                : "default"
-                          }
-                          className="rounded-lg w-14 justify-center"
-                        >
-                          {Math.round(route.average_risk_score)}
-                        </Badge>
+                        <div className="flex items-center gap-4">
+                          <div className="w-32 hidden sm:block">
+                            <Progress
+                              value={route.average_risk_score}
+                              className="h-2"
+                            />
+                          </div>
+                          <Badge
+                            variant={
+                              route.average_risk_score > 70
+                                ? "destructive"
+                                : route.average_risk_score > 40
+                                  ? "secondary"
+                                  : "default"
+                            }
+                            className="rounded-lg w-14 justify-center"
+                          >
+                            {Math.round(route.average_risk_score)}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Quick Actions */}
           <div className="space-y-4">

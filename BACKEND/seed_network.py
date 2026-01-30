@@ -9,9 +9,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.modules.geospatial.models import NavNode, NavEdge
 
-DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/nexus_ai"
+from app.core.config import settings
+
+# Use settings for DB connection (handles Docker vs Local via .env)
+DATABASE_URL = settings.DATABASE_URL
 
 async def seed_network():
+    # Only seed if tables exist (usually run after alembic upgrade)
     engine = create_async_engine(DATABASE_URL, echo=True)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
