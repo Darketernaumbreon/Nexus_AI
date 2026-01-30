@@ -113,27 +113,60 @@ async def seed_network():
                 points.append(f"{end_lon} {end_lat}")
                 return f"LINESTRING({', '.join(points)})"
 
-            # Route 1: Guwahati (10) to Shillong (20) - NH-6 (Hilly/Curvy)
+            # Helper to generate simplified but realistic paths
+            # We use hardcoded paths for main highways to match OSM tiles
+            # Coordinates are approximate [LON LAT] sequence
+            
+            # NH-6: Guwahati -> Shillong (Winding South)
+            # Real path approximation
+            nh6_path = [
+                "91.7362 26.1445", # Guwahati
+                "91.7500 26.1000",
+                "91.7800 26.0500", # Khanapara area
+                "91.8200 25.9500", # Into the hills
+                "91.8500 25.9000",
+                "91.8800 25.8000", # Nongpoh
+                "91.9000 25.7500",
+                "91.9200 25.7000", # Umiam Lake area
+                "91.9100 25.6500",
+                "91.8933 25.5788"  # Shillong
+            ]
+            
             edges.append(NavEdge(
                 id=101, source_node=10, target_node=20,
-                geom=WKTElement(generate_curved_path(26.1445, 91.7362, 25.5788, 91.8933, num_segments=25, curve_intensity=0.08), srid=4326),
-                base_cost=15.0, capacity=2000, surface_type="asphalt",
+                geom=WKTElement(f"LINESTRING({', '.join(nh6_path)})", srid=4326),
+                base_cost=98.0, capacity=2000, surface_type="asphalt",
                 name="NH-6 (Guwahati-Shillong)"
             ))
 
-            # Route 2: Guwahati (10) to Dispur (3) - Short Urban
+            # GS Road: Guwahati -> Dispur (Urban Straight-ish)
+            gs_road = [
+                 "91.7362 26.1445", # Paltan Bazar
+                 "91.7500 26.1500",
+                 "91.7700 26.1450", # Ganeshguri
+                 "91.7900 26.1400"  # Dispur
+            ]
             edges.append(NavEdge(
                 id=102, source_node=10, target_node=3,
-                geom=WKTElement(generate_curved_path(26.1445, 91.7362, 26.1400, 91.7900, num_segments=5, curve_intensity=0.005), srid=4326),
-                base_cost=2.0, capacity=1500, surface_type="asphalt",
+                geom=WKTElement(f"LINESTRING({', '.join(gs_road)})", srid=4326),
+                base_cost=6.0, capacity=1500, surface_type="asphalt",
                 name="GS Road"
             ))
 
-            # Route 3: Dispur (3) to Nagaon (4) - NH-27 (Highway)
+            # NH-27: Dispur -> Nagaon (Eastbound Highway)
+            nh27_path = [
+                "91.7900 26.1400",
+                "91.8500 26.1300", # Six Mile
+                "92.0000 26.1500", # Sonapur
+                "92.2000 26.2000", # Jagiroad
+                "92.4000 26.2500",
+                "92.5500 26.3000",
+                "92.6800 26.3400"  # Nagaon
+            ]
             edges.append(NavEdge(
                 id=103, source_node=3, target_node=4,
-                geom=WKTElement(generate_curved_path(26.1400, 91.7900, 26.3400, 92.6800, num_segments=20, curve_intensity=0.04), srid=4326),
-                base_cost=30.0, capacity=1200, surface_type="asphalt",
+                geom=WKTElement(f"LINESTRING({', '.join(nh27_path)})", srid=4326),
+                base_cost=120.0, capacity=1200, surface_type="asphalt",
                 name="NH-27"
             ))
 
