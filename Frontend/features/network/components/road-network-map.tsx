@@ -33,7 +33,7 @@ export function RoadNetworkMap({
   routes,
   selectedRouteId,
   onRouteSelect,
-  showWeatherLayer = false,
+  showWeatherLayer = true,
   weatherCells,
 }: RoadNetworkMapProps) {
   const [zoom, setZoom] = useState(1);
@@ -42,8 +42,8 @@ export function RoadNetworkMap({
   const allCoords = routes.flatMap(r => r.coordinates || []);
   const hasData = allCoords.length > 0;
 
-  const lons = hasData ? allCoords.map(c => c[0]) : [91.7, 91.8]; // Default split if empty
-  const lats = hasData ? allCoords.map(c => c[1]) : [26.1, 26.2];
+  const lons = hasData ? allCoords.map(c => c[0]) : [91.73, 91.80]; // Default split if empty (Guwahati)
+  const lats = hasData ? allCoords.map(c => c[1]) : [26.10, 26.20];
 
   const minLon = Math.min(...lons);
   const maxLon = Math.max(...lons);

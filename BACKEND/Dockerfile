@@ -41,15 +41,14 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # Copy application code
 COPY . .
 
+# Make start script executable
+RUN chmod +x /app/scripts/start.sh
+
 # Change ownership of the application code to the non-root user
 RUN chown -R appuser:appgroup /app
 
 # Switch to non-root user
 USER appuser
-
-# Copy scripts
-COPY scripts/ /app/scripts/
-RUN chmod +x /app/scripts/start.sh
 
 # Expose port (documentary)
 EXPOSE 8000

@@ -25,16 +25,25 @@ async def seed_network():
         async with session.begin():
             print("Seeding road network...")
             
-            # Create Nodes (Around Delhi)
+            # Create Nodes (North East Only - Guwahati Hub)
+            # Node definitions
+            # 1: Guwahati (Hub)
+            # 2-5: Key Cities in NE
+            
             nodes = [
-                NavNode(id=1, geom=WKTElement('POINT(77.2090 28.6139)', srid=4326)), # CP
-                NavNode(id=2, geom=WKTElement('POINT(77.2295 28.6129)', srid=4326)), # India Gate
-                NavNode(id=3, geom=WKTElement('POINT(77.2060 28.5245)', srid=4326)), # Qutub Minar (South)
-                NavNode(id=4, geom=WKTElement('POINT(77.2500 28.5500)', srid=4326)), # Lotus Temple
-                NavNode(id=5, geom=WKTElement('POINT(77.1000 28.7000)', srid=4326)), # Rohini (North West)
+                # Guwahati (Gateway to NE) - Centre
+                NavNode(id=1, geom=WKTElement('POINT(91.7362 26.1445)', srid=4326)), 
+                # Shillong (South of Guwahati)
+                NavNode(id=2, geom=WKTElement('POINT(91.8933 25.5788)', srid=4326)), 
+                # Dispur (Close to Guwahati)
+                NavNode(id=3, geom=WKTElement('POINT(91.7900 26.1400)', srid=4326)),
+                # Nagaon (East)
+                NavNode(id=4, geom=WKTElement('POINT(92.6800 26.3400)', srid=4326)),
+                # Tezpur (North East)
+                NavNode(id=5, geom=WKTElement('POINT(92.7900 26.6500)', srid=4326)),
             ]
             
-            # Definitions for North East Capitals & Key Locations
+            # Definitions for wider North East
             ne_locations = [
                 {"id": 10, "name": "Guwahati", "lat": 26.1445, "lon": 91.7362},
                 {"id": 20, "name": "Shillong", "lat": 25.5788, "lon": 91.8933},
@@ -44,89 +53,76 @@ async def seed_network():
                 {"id": 60, "name": "Aizawl", "lat": 23.7271, "lon": 92.7176},
                 {"id": 70, "name": "Agartala", "lat": 23.8315, "lon": 91.2868},
                 {"id": 80, "name": "Gangtok", "lat": 27.3389, "lon": 88.6065},
-                {"id": 90, "name": "Tawang", "lat": 27.5861, "lon": 91.8594}, # Mountainous
-                {"id": 100, "name": "Cherrapunji", "lat": 25.2702, "lon": 91.7323} # High Rainfall
+                {"id": 90, "name": "Tawang", "lat": 27.5861, "lon": 91.8594}, 
+                {"id": 100, "name": "Cherrapunji", "lat": 25.2702, "lon": 91.7323}
             ]
             
-            # Create Nodes
+            # Create/Merge Core Nodes
+            for n in nodes:
+                await session.merge(n)
+
+            # Create Nodes from definitions
             for loc in ne_locations:
                 geom = f"POINT({loc['lon']} {loc['lat']})"
                 node = NavNode(id=loc['id'], geom=WKTElement(geom, srid=4326))
                 await session.merge(node)
 
-            # Generate intermediate "Village" nodes
+            # Generate intermediate "Village" nodes for density
             village_id_start = 200
             villages = []
             import random
             random.seed(42)  
             
-            for i in range(20):
-                lat = random.uniform(23.0, 28.0)
-                lon = random.uniform(90.0, 95.0)
+            # Generate village nodes bounded by NE coordinates roughly
+            for i in range(25):
+                lat = random.uniform(25.0, 27.0) # Tighter lat/lon for visible density
+                lon = random.uniform(91.0, 93.0)
                 vid = village_id_start + i
                 villages.append({"id": vid, "lat": lat, "lon": lon, "name": f"Village-{i+1}"})
                 node = NavNode(id=vid, geom=WKTElement(f"POINT({lon} {lat})", srid=4326))
                 await session.merge(node)
+            
+            # Create Edges (Inter-city Highways) - Corrected logic
+            edges = []
+            
+            # Main Corridors (Guwahati to others)
+            # Use IDs from ne_locations (10=Guwahati)
+            
+            # Route 1: Guwahati (10) to Shillong (20) - NH-6
+            edges.append(NavEdge(
+                id=101, source_node=10, target_node=20,
+                geom=WKTElement('LINESTRING(91.7362 26.1445, 91.8933 25.5788)', srid=4326),
+                base_cost=15.0, capacity=2000, surface_type="asphalt",
+                name="NH-6 (Guwahati-Shillong)"
+            ))
 
-            print("Nodes created (North East Capitals + Villages).")
-            
-            # Create Edges (Inter-city Highways)
-            edges = [
-                # CP to India Gate
-                NavEdge(
-                    id=101, source_node=1, target_node=2,
-                    geom=WKTElement('LINESTRING(77.2090 28.6139, 77.2295 28.6129)', srid=4326),
-                    base_cost=2.5, capacity=1000, surface_type="asphalt",
-                    name="Rajpath"
-                ),
-                # India Gate to Lotus Temple
-                NavEdge(
-                    id=102, source_node=2, target_node=4,
-                    geom=WKTElement('LINESTRING(77.2295 28.6129, 77.2500 28.5500)', srid=4326),
-                    base_cost=8.0, capacity=1500, surface_type="asphalt",
-                    name="Mathura Rd"
-                ),
-                # Lotus to Qutub
-                NavEdge(
-                    id=103, source_node=4, target_node=3,
-                    geom=WKTElement('LINESTRING(77.2500 28.5500, 77.2060 28.5245)', srid=4326),
-                    base_cost=6.0, capacity=1200, surface_type="asphalt",
-                    name="Outer Ring Rd"
-                ),
-                # CP to Rohini (Long route)
-                NavEdge(
-                    id=104, source_node=1, target_node=5,
-                    geom=WKTElement('LINESTRING(77.2090 28.6139, 77.1000 28.7000)', srid=4326),
-                    base_cost=15.0, capacity=800, surface_type="GRAVEL",
-                    name="Rohtak Rd"
-                ),
-            ]
+            # Route 2: Guwahati (10) to Dispur (3) to Nagaon (4)
+            edges.append(NavEdge(
+                id=102, source_node=10, target_node=3,
+                geom=WKTElement('LINESTRING(91.7362 26.1445, 91.7900 26.1400)', srid=4326),
+                base_cost=2.0, capacity=1500, surface_type="asphalt",
+                name="GS Road"
+            ))
+            edges.append(NavEdge(
+                id=103, source_node=3, target_node=4,
+                geom=WKTElement('LINESTRING(91.7900 26.1400, 92.6800 26.3400)', srid=4326),
+                base_cost=30.0, capacity=1200, surface_type="asphalt",
+                name="NH-27"
+            ))
+
             edge_id = 500
-            
-            # Connect Capitals to Guwahati (Hub)
-            hub = ne_locations[0] # Guwahati
-            for loc in ne_locations[1:]:
-                edge_id += 1
-                # Assign a proper Highway Name
-                hw_name = f"NH-{random.randint(2, 50)}: {hub['name']}-{loc['name']}"
-                
-                edges.append(NavEdge(
-                    id=edge_id, source_node=hub['id'], target_node=loc['id'],
-                    geom=WKTElement(f"LINESTRING({hub['lon']} {hub['lat']}, {loc['lon']} {loc['lat']})", srid=4326),
-                    base_cost=random.uniform(50, 200), capacity=2000, surface_type="highway",
-                    name=hw_name
-                ))
             
             # Connect Villages to nearest Capital (Feeder Roads)
             for v in villages:
                 # Find nearest capital
                 nearest = min(ne_locations, key=lambda c: (c['lat']-v['lat'])**2 + (c['lon']-v['lon'])**2)
                 edge_id += 1
-                # Mountainous/Remote attribute
+                
+                # Check line string validity - simple straight line
                 is_remote = random.choice([True, False])
                 surface = "gravel" if is_remote else "asphalt"
                 capacity = 500 if is_remote else 1000
-                road_name = f"Rural Rd {v['id']}" if is_remote else f"State Hwy {v['id']}"
+                road_name = f"PMGSY Rd {v['id']}" if is_remote else f"State Hwy {v['id']}"
                 
                 edges.append(NavEdge(
                     id=edge_id, source_node=nearest['id'], target_node=v['id'],
@@ -135,11 +131,10 @@ async def seed_network():
                     name=road_name
                 ))
 
-            
             for edge in edges:
                 await session.merge(edge)
                 
-            print(f"Seeded {len(edges)} edges.")
+            print(f"Seeded {len(edges)} edges (North East Focused).")
 
     await engine.dispose()
 

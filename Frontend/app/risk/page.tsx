@@ -11,32 +11,35 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, History, Zap, BarChart3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 
 export default function RiskPage() {
-  // Mock simulation history
-  const recentSimulations = [
-    {
-      id: "1",
-      region: "NH-06",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      riskScore: 65,
-      status: "completed",
-    },
-    {
-      id: "2",
-      region: "NH-44",
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      riskScore: 42,
-      status: "completed",
-    },
-    {
-      id: "3",
-      region: "NH-48",
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      riskScore: 78,
-      status: "completed",
-    },
-  ];
+  // State for simulations
+  const [recentSimulations, setSimulations] = useState<any[]>([]);
+
+  // Fetch real data on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await api.get('/routing/routes'); // Get all routes
+        const routes = res.data;
+
+        // Map routes to simulation format
+        const sims = routes.slice(0, 5).map((r: any) => ({
+          id: r.id,
+          region: r.name || `Route ${r.id}`,
+          timestamp: new Date(r.created_at || Date.now()),
+          riskScore: Math.round(r.average_risk_score || 0),
+          status: "completed"
+        }));
+        setSimulations(sims);
+      } catch (e) {
+        console.error("Failed to fetch simulations", e);
+      }
+    }
+    fetchData();
+  }, []);
 
   return (
     <AppLayout>
@@ -132,8 +135,8 @@ export default function RiskPage() {
                           sim.riskScore > 70
                             ? "destructive"
                             : sim.riskScore > 40
-                            ? "secondary"
-                            : "default"
+                              ? "secondary"
+                              : "default"
                         }
                         className="rounded-lg"
                       >
