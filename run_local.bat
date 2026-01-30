@@ -9,6 +9,7 @@ set POSTGRES_SERVER=localhost
 set POSTGRES_USER=postgres
 set POSTGRES_PASSWORD=password
 set POSTGRES_DB=nexus_ai
+set POSTGRES_PORT=5435
 
 echo.
 echo [1/4] Starting Database & Redis (Docker)...
