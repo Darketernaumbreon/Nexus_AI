@@ -88,24 +88,51 @@ async def seed_network():
             # Main Corridors (Guwahati to others)
             # Use IDs from ne_locations (10=Guwahati)
             
-            # Route 1: Guwahati (10) to Shillong (20) - NH-6
+            # Helper to generate realistic "wiggly" road geometry
+            import math
+            
+            def generate_curved_path(start_lat, start_lon, end_lat, end_lon, num_segments=15, curve_intensity=0.02):
+                """Generates a WKT LineString with randomized curvature."""
+                points = [f"{start_lon} {start_lat}"]
+                
+                for i in range(1, num_segments):
+                    t = i / num_segments
+                    
+                    # linear interpolation
+                    lat = start_lat + t * (end_lat - start_lat)
+                    lon = start_lon + t * (end_lon - start_lon)
+                    
+                    # Add pseudo-random "noise" for curvature
+                    # Use sin/cos with deterministic seed based on coords to look organic
+                    seed = (lat + lon) * 100
+                    offset_lat = math.sin(seed) * curve_intensity * math.sin(t * math.pi) 
+                    offset_lon = math.cos(seed) * curve_intensity * math.sin(t * math.pi)
+                    
+                    points.append(f"{lon + offset_lon} {lat + offset_lat}")
+                
+                points.append(f"{end_lon} {end_lat}")
+                return f"LINESTRING({', '.join(points)})"
+
+            # Route 1: Guwahati (10) to Shillong (20) - NH-6 (Hilly/Curvy)
             edges.append(NavEdge(
                 id=101, source_node=10, target_node=20,
-                geom=WKTElement('LINESTRING(91.7362 26.1445, 91.8933 25.5788)', srid=4326),
+                geom=WKTElement(generate_curved_path(26.1445, 91.7362, 25.5788, 91.8933, num_segments=25, curve_intensity=0.08), srid=4326),
                 base_cost=15.0, capacity=2000, surface_type="asphalt",
                 name="NH-6 (Guwahati-Shillong)"
             ))
 
-            # Route 2: Guwahati (10) to Dispur (3) to Nagaon (4)
+            # Route 2: Guwahati (10) to Dispur (3) - Short Urban
             edges.append(NavEdge(
                 id=102, source_node=10, target_node=3,
-                geom=WKTElement('LINESTRING(91.7362 26.1445, 91.7900 26.1400)', srid=4326),
+                geom=WKTElement(generate_curved_path(26.1445, 91.7362, 26.1400, 91.7900, num_segments=5, curve_intensity=0.005), srid=4326),
                 base_cost=2.0, capacity=1500, surface_type="asphalt",
                 name="GS Road"
             ))
+
+            # Route 3: Dispur (3) to Nagaon (4) - NH-27 (Highway)
             edges.append(NavEdge(
                 id=103, source_node=3, target_node=4,
-                geom=WKTElement('LINESTRING(91.7900 26.1400, 92.6800 26.3400)', srid=4326),
+                geom=WKTElement(generate_curved_path(26.1400, 91.7900, 26.3400, 92.6800, num_segments=20, curve_intensity=0.04), srid=4326),
                 base_cost=30.0, capacity=1200, surface_type="asphalt",
                 name="NH-27"
             ))
@@ -118,15 +145,20 @@ async def seed_network():
                 nearest = min(ne_locations, key=lambda c: (c['lat']-v['lat'])**2 + (c['lon']-v['lon'])**2)
                 edge_id += 1
                 
-                # Check line string validity - simple straight line
                 is_remote = random.choice([True, False])
                 surface = "gravel" if is_remote else "asphalt"
                 capacity = 500 if is_remote else 1000
                 road_name = f"PMGSY Rd {v['id']}" if is_remote else f"State Hwy {v['id']}"
                 
+                # Remote roads are wigglier
+                intensity = 0.05 if is_remote else 0.02
+                segments = 15 if is_remote else 10
+                
+                wkt = generate_curved_path(nearest['lat'], nearest['lon'], v['lat'], v['lon'], num_segments=segments, curve_intensity=intensity)
+                
                 edges.append(NavEdge(
                     id=edge_id, source_node=nearest['id'], target_node=v['id'],
-                    geom=WKTElement(f"LINESTRING({nearest['lon']} {nearest['lat']}, {v['lon']} {v['lat']})", srid=4326),
+                    geom=WKTElement(wkt, srid=4326),
                     base_cost=random.uniform(20, 80), capacity=capacity, surface_type=surface,
                     name=road_name
                 ))
