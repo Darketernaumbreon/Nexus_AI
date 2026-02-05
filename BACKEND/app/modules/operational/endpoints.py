@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from arq import create_pool
 from arq.connections import ArqRedis
+from arq.jobs import Job
 from typing import Any
 
 from app.core.config import settings
@@ -55,7 +56,7 @@ async def get_job_status(job_id: str):
     """
     try:
         pool = await create_pool(settings.REDIS_SETTINGS)
-        job = await pool.job(job_id)
+        job = Job(job_id, pool)
         
         if not job:
             await pool.close()

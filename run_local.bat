@@ -32,8 +32,8 @@ start "Nexus Backend" cmd /k "cd BACKEND && echo Starting Backend... && uvicorn 
 
 echo.
 echo [4/4] Starting Frontend Server...
-echo       (Installing dependencies & starting...)
-start "Nexus Frontend" cmd /k "cd Frontend && npm install && npm start"
+echo       (Starting in development mode...)
+start "Nexus Frontend" cmd /k "cd Frontend && npm run dev"
 
 echo.
 echo ==========================================

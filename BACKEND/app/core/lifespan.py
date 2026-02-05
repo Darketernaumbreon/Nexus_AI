@@ -13,7 +13,10 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Dict, Any
 
-import shap
+try:
+    import shap
+except ImportError:
+    shap = None
 from fastapi import FastAPI
 
 from app.core.config import settings
@@ -62,8 +65,12 @@ def load_flood_model() -> Dict[str, Any]:
     logger.info("flood_thresholds_loaded", threshold=thresholds.get("optimal_threshold"))
     
     # Initialize SHAP explainer (TreeExplainer is fast for XGBoost)
-    explainer = shap.TreeExplainer(model)
-    logger.info("flood_shap_explainer_initialized")
+    if shap:
+        explainer = shap.TreeExplainer(model)
+        logger.info("flood_shap_explainer_initialized")
+    else:
+        explainer = None
+        logger.warning("flood_shap_disabled_no_library")
     
     return {
         "model": model,
@@ -109,8 +116,12 @@ def load_landslide_model() -> Dict[str, Any]:
     logger.info("landslide_thresholds_loaded", threshold=thresholds.get("optimal_threshold"))
     
     # Initialize SHAP explainer
-    explainer = shap.TreeExplainer(model)
-    logger.info("landslide_shap_explainer_initialized")
+    if shap:
+        explainer = shap.TreeExplainer(model)
+        logger.info("landslide_shap_explainer_initialized")
+    else:
+        explainer = None
+        logger.warning("landslide_shap_disabled_no_library")
     
     return {
         "model": model,

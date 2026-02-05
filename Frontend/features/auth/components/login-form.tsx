@@ -47,7 +47,11 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await AuthAPI.login(data);
+      const payload = {
+        ...data,
+        username: data.username.includes("@") ? data.username : `${data.username}@nexus.ai`
+      };
+      const response = await AuthAPI.login(payload);
       setToken(response.access_token);
 
       // Set user in context

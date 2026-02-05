@@ -1,0 +1,7 @@
+{
+    "region_id": "test_region",
+    "parameters": {
+        "rainfall": 100,
+        "terrain": "mountainous"
+    }
+}

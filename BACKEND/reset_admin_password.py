@@ -15,7 +15,7 @@ async def reset_admin():
     engine = create_async_engine(DATABASE_URL, echo=False)
     
     target_email = "admin@nexus.ai"
-    new_password = "password123"
+    new_password = "NexusSecureStart2026!"
     
     try:
         async with engine.begin() as conn:
