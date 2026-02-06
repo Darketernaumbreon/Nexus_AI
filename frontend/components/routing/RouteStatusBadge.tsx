@@ -31,7 +31,11 @@ const STATUS_CONFIG: Record<
 };
 
 export function RouteStatusBadge({ status }: RouteStatusBadgeProps) {
-    const config = STATUS_CONFIG[status];
+    const config = STATUS_CONFIG[status] || {
+        color: "text-slate-700",
+        bgColor: "bg-slate-100",
+        label: status || "UNKNOWN",
+    };
 
     return (
         <span
